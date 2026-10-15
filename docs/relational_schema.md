@@ -2,7 +2,7 @@
 **Project:** Criminal Case Management & Crime Analytics System (Project Evaluation)  
 **Database:** `crime_db`  
 **Engine:** MySQL 8.0+ / 9.x (InnoDB)  
-**Total Relations:** 12 Normalized Tables  
+**Total Relations:** 14 Normalized Tables  
 
 ---
 
@@ -25,6 +25,7 @@
    $\text{email}^\text{CK}$, 
    $\text{password\_hash}$, 
    $\text{role}$, 
+   $\text{clearance\_level}$, 
    $\text{full\_name}$, 
    $\text{badge\_number}^\text{CK}$, 
    $\text{is\_active}$, 
@@ -53,6 +54,7 @@
    $\text{case\_type}$, 
    $\text{status}$, 
    $\text{priority}$, 
+   $\text{classification\_level}$, 
    $\text{incident\_location}$, 
    $\text{date\_reported}$, 
    $\text{date\_closed}$, 
@@ -164,6 +166,34 @@
     $\text{imported\_at}$
 )
 
+13. **CITIZENS** (
+    $\underline{\text{citizen\_id}}$, 
+    $\text{email}^\text{CK}$, 
+    $\text{password\_hash}$, 
+    $\text{full\_name}$, 
+    $\text{phone\_number}$, 
+    $\text{address}$, 
+    $\text{is\_active}$, 
+    $\text{created\_at}$, 
+    $\text{updated\_at}$
+)
+
+14. **CITIZEN_REPORTS** (
+    $\underline{\text{report\_id}}$, 
+    $\text{tracking\_number}^\text{CK}$, 
+    $\text{citizen\_id} \to \text{CITIZENS(citizen\_id)}$, 
+    $\text{category}$, 
+    $\text{incident\_date}$, 
+    $\text{incident\_location}$, 
+    $\text{title}$, 
+    $\text{description}$, 
+    $\text{status}$, 
+    $\text{public\_status\_notes}$, 
+    $\text{is\_demo_submission}$, 
+    $\text{created\_at}$, 
+    $\text{updated\_at}$
+)
+
 ---
 
 ## 2. Referential Integrity & Action Matrix
@@ -184,3 +214,4 @@
 | `fk_notes_case` | `investigation_notes.case_id` | `cases.case_id` | `CASCADE` | `CASCADE` |
 | `fk_notes_author` | `investigation_notes.author_id` | `users.user_id` | `RESTRICT` | `CASCADE` |
 | `fk_incident_canonical_iucr` | `public_crime_incidents.canonical_iucr_code` | `iucr_codes.iucr_code` | `SET NULL` | `CASCADE` |
+| `fk_citizen_reports_citizen` | `citizen_reports.citizen_id` | `citizens.citizen_id` | `CASCADE` | `CASCADE` |

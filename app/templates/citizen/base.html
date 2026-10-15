@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Citizen Portal{% endblock %} - Metropolitan Police Community Services</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --citizen-teal: #0d5c75;
+            --citizen-dark: #073b4c;
+            --citizen-accent: #06d6a0;
+            --citizen-light: #f8fafc;
+        }
+        body {
+            background-color: var(--citizen-light);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .navbar-citizen {
+            background-color: var(--citizen-dark);
+            border-bottom: 3px solid var(--citizen-accent);
+        }
+        .navbar-citizen .navbar-brand {
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 0.3px;
+        }
+        .navbar-citizen .nav-link {
+            color: rgba(255, 255, 255, 0.88);
+            font-weight: 500;
+            padding: 0.5rem 0.85rem;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .navbar-citizen .nav-link:hover, .navbar-citizen .nav-link.active {
+            color: #ffffff;
+            background-color: rgba(255, 255, 255, 0.12);
+        }
+        .disclaimer-banner {
+            background-color: #fff3cd;
+            border-bottom: 1px solid #ffe69c;
+            color: #856404;
+            font-size: 0.88rem;
+            padding: 0.6rem 1rem;
+        }
+        .card-custom {
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            background-color: #ffffff;
+        }
+        footer {
+            margin-top: auto;
+            background-color: #ffffff;
+            border-top: 1px solid #e2e8f0;
+            padding: 1.25rem 0;
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Prominent Non-Emergency Demo Notice -->
+    <div class="disclaimer-banner text-center">
+        <div class="container">
+            <i class="bi bi-exclamation-triangle-fill me-1 text-warning"></i>
+            <strong>PUBLIC DEMONSTRATION CITIZEN PORTAL</strong> — For non-emergency public reporting demonstration and project evaluation only.
+            <strong>For life-threatening emergencies or crimes in progress, immediately call 911.</strong>
+        </div>
+    </div>
+
+    <!-- Navigation Header -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-citizen sticky-top shadow-sm">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('citizen.dashboard') if current_citizen else url_for('citizen.login') }}">
+                <i class="bi bi-shield-check text-info me-2 fs-4"></i>
+                <div>
+                    <div>Citizen Services Portal</div>
+                    <small style="font-size: 0.7rem; font-weight: 400; opacity: 0.8;">Community Non-Emergency Reporting</small>
+                </div>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#citizenNavbar">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="citizenNavbar">
+                <ul class="navbar-nav ms-auto align-items-lg-center">
+                    {% if current_citizen %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('citizen.dashboard') }}">
+                                <i class="bi bi-grid-fill me-1"></i> My Reports
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('citizen.new_report') }}">
+                                <i class="bi bi-plus-circle me-1"></i> Submit Report
+                            </a>
+                        </li>
+                        <li class="nav-item ms-lg-2">
+                            <span class="navbar-text text-light me-2">
+                                <i class="bi bi-person-circle me-1 text-info"></i> {{ current_citizen.full_name }}
+                            </span>
+                        </li>
+                        <li class="nav-item">
+                            <a class="btn btn-sm btn-outline-light" href="{{ url_for('citizen.logout') }}">
+                                <i class="bi bi-box-arrow-right me-1"></i> Sign Out
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('citizen.login') }}">
+                                <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('citizen.register') }}">
+                                <i class="bi bi-person-plus me-1"></i> Register Account
+                            </a>
+                        </li>
+                        <li class="nav-item ms-lg-2">
+                            <a class="btn btn-sm btn-outline-warning" href="{{ url_for('auth.login') }}">
+                                <i class="bi bi-shield-lock me-1"></i> Police Staff Portal
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Container -->
+    <main class="container py-4">
+        <!-- Flash Alert Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm" role="alert">
+                        <i class="bi bi-info-circle me-2"></i> {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center">
+        <div class="container">
+            <p class="mb-1">Metropolitan Police Citizen Service Portal &bull; Non-Emergency Reporting System</p>
+            <p class="small text-muted mb-0">Strict Isolation: Citizen demonstration reports do not expose internal police records, investigative notes, or classified case dossiers.</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

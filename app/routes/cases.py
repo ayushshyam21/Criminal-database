@@ -4,7 +4,7 @@ Criminal Case Management CRUD, personnel assignments, person association,
 evidence cataloging, and case diary notes.
 """
 from datetime import datetime
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
 from sqlalchemy import text, func, or_
 from app.db import db
@@ -13,6 +13,9 @@ from app.models import (
     CasePerson, Evidence, InvestigationNote, EvidenceCustodyLog
 )
 from app.routes.auth import admin_required, investigator_or_admin_required
+from app.services.security_service import (
+    filter_cases_for_user, can_access_case, CLEARANCE_RANKS, get_clearance_rank
+)
 
 cases_bp = Blueprint("cases", __name__, url_prefix="/cases")
 
@@ -26,6 +29,7 @@ def list_cases():
     priority_filter = request.args.get("priority", "")
     type_filter = request.args.get("case_type", "")
     station_filter = request.args.get("station_id", "")
+    classification_filter = request.args.get("classification", "")
     page = request.args.get("page", 1, type=int)
 
     query = Case.query
@@ -49,6 +53,11 @@ def list_cases():
         query = query.filter(Case.case_type == type_filter)
     if station_filter and station_filter.isdigit():
         query = query.filter(Case.station_id == int(station_filter))
+    if classification_filter:
+        query = query.filter(Case.classification_level == classification_filter)
+
+    # Enforce Bell-LaPadula clearance level + Need-to-Know filtering
+    query = filter_cases_for_user(query, current_user)
 
     pagination = query.order_by(Case.date_reported.desc()).paginate(page=page, per_page=12, error_out=False)
     stations = PoliceStation.query.order_by(PoliceStation.station_name).all()
@@ -58,10 +67,12 @@ def list_cases():
         cases=pagination.items,
         pagination=pagination,
         stations=stations,
+        clearance_levels=list(CLEARANCE_RANKS.keys()),
         selected_status=status_filter,
         selected_priority=priority_filter,
         selected_type=type_filter,
         selected_station=station_filter,
+        selected_classification=classification_filter,
         search_query=query_str
     )
 
@@ -79,16 +90,26 @@ def create_case():
         incident_location = request.form.get("incident_location", "").strip()
         description = request.form.get("description", "").strip()
 
+        classification = request.form.get("classification_level", "INTERNAL").strip().upper()
+        if classification not in CLEARANCE_RANKS:
+            classification = "INTERNAL"
+
+        # Clearance hierarchy: Cannot file a case above own clearance level
+        user_clearance = getattr(current_user, "clearance_level", "INTERNAL")
+        if get_clearance_rank(classification) > get_clearance_rank(user_clearance):
+            flash(f"You cannot create a '{classification}' classified dossier with your current '{user_clearance}' clearance.", "danger")
+            return render_template("cases/create.html", stations=stations, clearance_levels=list(CLEARANCE_RANKS.keys()))
+
         # Validation
         if not title or len(title) < 5:
             flash("Case title must be at least 5 characters long.", "danger")
-            return render_template("cases/create.html", stations=stations)
+            return render_template("cases/create.html", stations=stations, clearance_levels=list(CLEARANCE_RANKS.keys()))
         if not station_id or not station_id.isdigit():
             flash("Please select a valid precinct station.", "danger")
-            return render_template("cases/create.html", stations=stations)
+            return render_template("cases/create.html", stations=stations, clearance_levels=list(CLEARANCE_RANKS.keys()))
         if not incident_location:
             flash("Incident location is required.", "danger")
-            return render_template("cases/create.html", stations=stations)
+            return render_template("cases/create.html", stations=stations, clearance_levels=list(CLEARANCE_RANKS.keys()))
 
         # Generate unique case number: CASE-YYYY-XXXX
         current_year = datetime.utcnow().year
@@ -110,6 +131,7 @@ def create_case():
             case_type=case_type,
             status="Open",
             priority=priority,
+            classification_level=classification,
             incident_location=incident_location,
             date_reported=datetime.utcnow(),
             created_by=current_user.user_id,
@@ -125,13 +147,19 @@ def create_case():
             db.session.rollback()
             flash(f"Failed to create case: {str(e)}", "danger")
 
-    return render_template("cases/create.html", stations=stations)
+    return render_template("cases/create.html", stations=stations, clearance_levels=list(CLEARANCE_RANKS.keys()))
 
 
 @cases_bp.route("/<int:case_id>")
 @login_required
 def case_detail(case_id):
     case = Case.query.get_or_404(case_id)
+
+    # Enforce Bell-LaPadula clearance level + Need-to-Know authorization
+    allowed, reason = can_access_case(current_user, case, action="view")
+    if not allowed:
+        flash(reason, "danger")
+        abort(403, description=reason)
 
     # 1. Execute Stored Function: fn_case_duration
     try:
@@ -184,6 +212,12 @@ def edit_case(case_id):
     case = Case.query.get_or_404(case_id)
     stations = PoliceStation.query.order_by(PoliceStation.station_name).all()
 
+    # Enforce authorization to modify case
+    allowed, reason = can_access_case(current_user, case, action="edit")
+    if not allowed:
+        flash(reason, "danger")
+        abort(403, description=reason)
+
     if request.method == "POST":
         title = request.form.get("title", "").strip()
         case_type = request.form.get("case_type")
@@ -192,10 +226,20 @@ def edit_case(case_id):
         incident_location = request.form.get("incident_location", "").strip()
         description = request.form.get("description", "").strip()
         station_id = request.form.get("station_id")
+        classification_val = request.form.get("classification_level")
 
         if not title:
             flash("Case title cannot be empty.", "danger")
-            return render_template("cases/edit.html", case=case, stations=stations)
+            return render_template("cases/edit.html", case=case, stations=stations, clearance_levels=list(CLEARANCE_RANKS.keys()))
+
+        # If user changed classification level, ensure they hold sufficient clearance
+        if classification_val and classification_val.upper() in CLEARANCE_RANKS:
+            req_rank = get_clearance_rank(classification_val)
+            user_rank = get_clearance_rank(current_user.clearance_level)
+            if req_rank <= user_rank:
+                case.classification_level = classification_val.upper()
+            else:
+                flash(f"Cannot escalate dossier to '{classification_val}' beyond your clearance.", "warning")
 
         case.title = title
         case.case_type = case_type
@@ -222,7 +266,7 @@ def edit_case(case_id):
             db.session.rollback()
             flash(f"Failed to update case: {str(e)}", "danger")
 
-    return render_template("cases/edit.html", case=case, stations=stations)
+    return render_template("cases/edit.html", case=case, stations=stations, clearance_levels=list(CLEARANCE_RANKS.keys()))
 
 
 @cases_bp.route("/<int:case_id>/delete", methods=["POST"])
@@ -230,6 +274,11 @@ def edit_case(case_id):
 @admin_required
 def delete_case(case_id):
     case = Case.query.get_or_404(case_id)
+    allowed, reason = can_access_case(current_user, case, action="delete")
+    if not allowed:
+        flash(reason, "danger")
+        abort(403, description=reason)
+
     case_number = case.case_number
     try:
         db.session.delete(case)
@@ -248,6 +297,12 @@ def assign_personnel(case_id):
     Allocates personnel using the atomic stored procedure sp_assign_case.
     Enforces single active lead investigator and advances status.
     """
+    case = Case.query.get_or_404(case_id)
+    allowed, reason = can_access_case(current_user, case, action="edit")
+    if not allowed:
+        flash(reason, "danger")
+        abort(403, description=reason)
+
     user_id = request.form.get("user_id")
     role = request.form.get("role", "Assisting Officer")
     notes = request.form.get("notes", "")
@@ -257,8 +312,6 @@ def assign_personnel(case_id):
         return redirect(url_for("cases.case_detail", case_id=case_id))
 
     try:
-        # Call Stored Procedure: sp_assign_case(case_id, user_id, role, notes, @code, @msg)
-        # Using raw connection cursor to properly handle INOUT/OUT parameters in MySQL
         raw_conn = db.session.connection().connection
         with raw_conn.cursor() as cursor:
             cursor.execute(
@@ -268,7 +321,6 @@ def assign_personnel(case_id):
             cursor.execute("SELECT @status_code AS code, @status_message AS msg;")
             res = cursor.fetchone()
             
-            # pymysql dict or tuple
             if isinstance(res, dict):
                 code, msg = res["code"], res["msg"]
             else:
@@ -291,6 +343,12 @@ def assign_personnel(case_id):
 @cases_bp.route("/<int:case_id>/unassign/<int:assignment_id>", methods=["POST"])
 @login_required
 def unassign_personnel(case_id, assignment_id):
+    case = Case.query.get_or_404(case_id)
+    allowed, reason = can_access_case(current_user, case, action="edit")
+    if not allowed:
+        flash(reason, "danger")
+        abort(403, description=reason)
+
     assignment = CaseAssignment.query.get_or_404(assignment_id)
     if assignment.case_id != case_id:
         flash("Assignment does not match target case.", "danger")
@@ -313,6 +371,12 @@ def unassign_personnel(case_id, assignment_id):
 @cases_bp.route("/<int:case_id>/add-person", methods=["POST"])
 @login_required
 def add_person(case_id):
+    case = Case.query.get_or_404(case_id)
+    allowed, reason = can_access_case(current_user, case, action="edit")
+    if not allowed:
+        flash(reason, "danger")
+        abort(403, description=reason)
+
     person_id = request.form.get("person_id")
     role_in_case = request.form.get("role_in_case")
     statement_summary = request.form.get("statement_summary", "").strip()
@@ -343,10 +407,12 @@ def add_person(case_id):
 @cases_bp.route("/<int:case_id>/add-evidence", methods=["POST"])
 @login_required
 def add_evidence(case_id):
-    """
-    Intakes evidence. Note: trg_evidence_initial_custody automatically
-    records the initial chain-of-custody entry upon insert!
-    """
+    case = Case.query.get_or_404(case_id)
+    allowed, reason = can_access_case(current_user, case, action="edit")
+    if not allowed:
+        flash(reason, "danger")
+        abort(403, description=reason)
+
     evidence_type = request.form.get("evidence_type")
     description = request.form.get("description", "").strip()
     storage_location = request.form.get("current_storage_location", "").strip()
@@ -355,7 +421,6 @@ def add_evidence(case_id):
         flash("Evidence description and storage location are required.", "warning")
         return redirect(url_for("cases.case_detail", case_id=case_id))
 
-    # Generate evidence code: EVD-CASE_ID-COUNT
     count = Evidence.query.filter_by(case_id=case_id).count() + 1
     evidence_code = f"EVD-{case_id:04d}-{count:03d}"
 
@@ -385,6 +450,12 @@ def add_evidence(case_id):
 @cases_bp.route("/<int:case_id>/add-note", methods=["POST"])
 @login_required
 def add_note(case_id):
+    case = Case.query.get_or_404(case_id)
+    allowed, reason = can_access_case(current_user, case, action="edit")
+    if not allowed:
+        flash(reason, "danger")
+        abort(403, description=reason)
+
     note_title = request.form.get("note_title", "").strip()
     note_body = request.form.get("note_body", "").strip()
     is_confidential = bool(request.form.get("is_confidential"))
@@ -411,3 +482,4 @@ def add_note(case_id):
         flash(f"Failed to record note: {str(e)}", "danger")
 
     return redirect(url_for("cases.case_detail", case_id=case_id))
+

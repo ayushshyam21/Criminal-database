@@ -43,16 +43,16 @@
                 </select>
             </div>
             <div class="col-md-2">
-                <label class="form-label small fw-semibold text-muted">Crime Classification</label>
-                <select name="case_type" class="form-select form-select-sm">
-                    <option value="">All Types</option>
-                    {% for ct in ['Homicide', 'Robbery', 'Assault', 'Burglary', 'Theft', 'Narcotics', 'Fraud', 'Cybercrime', 'Other'] %}
-                    <option value="{{ ct }}" {% if selected_type == ct %}selected{% endif %}>{{ ct }}</option>
+                <label class="form-label small fw-semibold text-muted">Classification</label>
+                <select name="classification" class="form-select form-select-sm">
+                    <option value="">All Clearances</option>
+                    {% for lvl in clearance_levels %}
+                    <option value="{{ lvl }}" {% if selected_classification == lvl %}selected{% endif %}>{{ lvl }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="col-md-2">
-                <label class="form-label small fw-semibold text-muted">Precinct Station</label>
+                <label class="form-label small fw-semibold text-muted">Precinct</label>
                 <select name="station_id" class="form-select form-select-sm">
                     <option value="">All Stations</option>
                     {% for stn in stations %}
@@ -76,6 +76,7 @@
                     <th>Case Number</th>
                     <th>Title & Incident Location</th>
                     <th>Type</th>
+                    <th>Classification</th>
                     <th>Station</th>
                     <th>Priority</th>
                     <th>Status</th>
@@ -96,6 +97,11 @@
                         <small class="text-muted"><i class="bi bi-geo-alt me-1"></i>{{ c.incident_location }}</small>
                     </td>
                     <td><span class="badge bg-light text-dark border">{{ c.case_type }}</span></td>
+                    <td>
+                        <span class="badge {{ c.classification_level|badge_classification }}">
+                            {{ c.classification_level }}
+                        </span>
+                    </td>
                     <td><span class="badge bg-secondary-subtle text-secondary">{{ c.station.district_code }}</span></td>
                     <td><span class="badge {{ c.priority|badge_priority }}">{{ c.priority }}</span></td>
                     <td><span class="badge {{ c.status|badge_status }}">{{ c.status }}</span></td>
@@ -108,9 +114,9 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="8" class="text-center py-5 text-muted">
+                    <td colspan="9" class="text-center py-5 text-muted">
                         <i class="bi bi-folder-x display-6 d-block mb-2 text-secondary"></i>
-                        No cases matched the specified search criteria.
+                        No cases matched the specified search criteria or your security clearance level.
                     </td>
                 </tr>
                 {% endfor %}

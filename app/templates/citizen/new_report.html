@@ -1,0 +1,81 @@
+{% extends "citizen/base.html" %}
+
+{% block title %}Submit Incident Report{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card card-custom shadow-sm p-4 my-2">
+            <div class="d-flex align-items-center mb-3">
+                <a href="{{ url_for('citizen.dashboard') }}" class="btn btn-outline-secondary btn-sm me-3">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                <div>
+                    <h3 class="fw-bold mb-0">File Non-Emergency Incident Report</h3>
+                    <small class="text-muted">Community Liaison &bull; Demo Public Reporting Service</small>
+                </div>
+            </div>
+
+            <div class="alert alert-warning d-flex align-items-center mb-4 py-2" role="alert">
+                <i class="bi bi-shield-exclamation fs-3 me-3 text-danger"></i>
+                <div>
+                    <strong>Emergency Warning:</strong> This form is strictly for non-urgent public demonstration reports. 
+                    If an emergency is occurring or life safety is at risk, immediately dial <strong>911</strong>.
+                </div>
+            </div>
+
+            <form method="POST" action="{{ url_for('citizen.new_report') }}">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="category" class="form-label fw-semibold">Incident Category <span class="text-danger">*</span></label>
+                        <select class="form-select" id="category" name="category" required>
+                            <option value="">-- Choose Category --</option>
+                            {% for cat in categories %}
+                                <option value="{{ cat }}" {% if category == cat %}selected{% endif %}>{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="incident_date" class="form-label fw-semibold">Date of Occurrence <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="incident_date" name="incident_date" 
+                               value="{{ incident_date or today }}" max="{{ today }}" required>
+                    </div>
+
+                    <div class="col-12">
+                        <label for="incident_location" class="form-label fw-semibold">Location / Address of Incident <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="incident_location" name="incident_location" 
+                               placeholder="e.g., 500 N Michigan Ave, Chicago, IL or Cross Streets" 
+                               value="{{ incident_location or '' }}" required>
+                        <div class="form-text">Specify nearest intersection, landmark, or street address.</div>
+                    </div>
+
+                    <div class="col-12">
+                        <label for="title" class="form-label fw-semibold">Report Summary Title <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="title" name="title" 
+                               placeholder="e.g., Bicycle Theft from Residential Bicycle Rack" 
+                               value="{{ title or '' }}" required maxlength="200">
+                    </div>
+
+                    <div class="col-12">
+                        <label for="description" class="form-label fw-semibold">Detailed Incident Narrative <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="description" name="description" rows="5" 
+                                  placeholder="Provide relevant facts, physical descriptions, approximate times, items involved, and any relevant details..." 
+                                  required minlength="15">{{ description or '' }}</textarea>
+                        <div class="form-text">Include all pertinent details. All submissions generate a unique tracking reference code upon submission.</div>
+                    </div>
+                </div>
+
+                <div class="border-top mt-4 pt-3 d-flex justify-content-between align-items-center">
+                    <a href="{{ url_for('citizen.dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle me-1"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary px-4 py-2 fw-semibold">
+                        <i class="bi bi-send-check me-1"></i> Submit Report &amp; Generate Tracking Code
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

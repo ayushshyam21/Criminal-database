@@ -1,0 +1,97 @@
+{% extends "citizen/base.html" %}
+
+{% block title %}Report {{ report.tracking_number }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <!-- Top Status Card -->
+        <div class="card card-custom shadow-sm mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center pb-3 mb-3 border-bottom">
+                    <div>
+                        <div class="d-flex align-items-center mb-1">
+                            <span class="badge bg-dark font-monospace fs-5 me-2">{{ report.tracking_number }}</span>
+                            {% if report.status == 'Submitted' %}
+                                <span class="badge bg-primary fs-6">Submitted</span>
+                            {% elif report.status == 'Under Review' %}
+                                <span class="badge bg-warning text-dark fs-6">Under Active Review</span>
+                            {% elif report.status == 'Information Requested' %}
+                                <span class="badge bg-info text-dark fs-6">Action / Info Requested</span>
+                            {% elif report.status == 'Resolved' %}
+                                <span class="badge bg-success fs-6">Resolved</span>
+                            {% else %}
+                                <span class="badge bg-secondary fs-6">{{ report.status }}</span>
+                            {% endif %}
+                        </div>
+                        <h4 class="fw-bold mb-0 text-dark">{{ report.title }}</h4>
+                    </div>
+                    <div class="mt-3 mt-md-0 text-md-end">
+                        <small class="text-muted d-block">Submission Timestamp</small>
+                        <span class="fw-semibold text-secondary">{{ report.created_at.strftime('%B %d, %Y at %H:%M') }}</span>
+                    </div>
+                </div>
+
+                <!-- Incident Meta Grid -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="p-3 bg-light rounded border">
+                            <small class="text-muted d-block text-uppercase fw-semibold">Category</small>
+                            <span class="fw-bold text-dark">{{ report.category }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 bg-light rounded border">
+                            <small class="text-muted d-block text-uppercase fw-semibold">Incident Date</small>
+                            <span class="fw-bold text-dark">{{ report.incident_date.strftime('%B %d, %Y') }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 bg-light rounded border">
+                            <small class="text-muted d-block text-uppercase fw-semibold">Reported Location</small>
+                            <span class="fw-bold text-dark">{{ report.incident_location }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Incident Narrative -->
+                <div class="mb-4">
+                    <h6 class="fw-bold text-uppercase text-muted small mb-2">Reported Incident Narrative</h6>
+                    <div class="p-3 bg-white border rounded">
+                        <p class="mb-0 text-dark" style="white-space: pre-wrap;">{{ report.description }}</p>
+                    </div>
+                </div>
+
+                <!-- Official Public Status & Communication -->
+                <div class="card border-info mb-3">
+                    <div class="card-header bg-info bg-opacity-10 py-2 border-info d-flex align-items-center">
+                        <i class="bi bi-chat-left-dots text-info me-2"></i>
+                        <span class="fw-bold text-dark">Official Department Follow-Up &amp; Status Notes</span>
+                    </div>
+                    <div class="card-body">
+                        {% if report.public_status_notes %}
+                            <p class="mb-0 text-dark">{{ report.public_status_notes }}</p>
+                        {% else %}
+                            <p class="text-muted fst-italic mb-0">Your submission has been cataloged. Official follow-up notes from the community desk will be published here.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Isolation Notice Banner -->
+                <div class="alert alert-light border small text-muted mb-0">
+                    <i class="bi bi-shield-check text-success me-1"></i>
+                    <strong>Information Privacy Guarantee:</strong> This tracking view presents only public status communications. Internal police investigative notes, suspect rosters, and classified police database records are isolated and protected.
+                </div>
+            </div>
+            <div class="card-footer bg-light py-3 d-flex justify-content-between align-items-center">
+                <a href="{{ url_for('citizen.dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Return to My Reports
+                </a>
+                <a href="{{ url_for('citizen.new_report') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-lg me-1"></i> Submit Another Report
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

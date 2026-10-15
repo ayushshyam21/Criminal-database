@@ -5,10 +5,11 @@ Strictly enforces is_fictional = TRUE.
 """
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask_login import login_required
+from flask_login import login_required, current_user
 from sqlalchemy import or_
 from app.db import db
 from app.models import Person, CasePerson
+from app.services.security_service import can_access_case
 
 persons_bp = Blueprint("persons", __name__, url_prefix="/persons")
 
@@ -98,8 +99,13 @@ def create_person():
 @login_required
 def person_detail(person_id):
     person = Person.query.get_or_404(person_id)
-    participations = CasePerson.query.filter_by(person_id=person_id).all()
-    return render_template("persons/detail.html", person=person, participations=participations)
+    all_participations = CasePerson.query.filter_by(person_id=person_id).all()
+    # Filter case participations to avoid leaking classified case involvement
+    visible_participations = [
+        cp for cp in all_participations 
+        if can_access_case(current_user, cp.case, action="view")[0]
+    ]
+    return render_template("persons/detail.html", person=person, participations=visible_participations)
 
 
 @persons_bp.route("/<int:person_id>/edit", methods=["GET", "POST"])

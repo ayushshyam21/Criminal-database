@@ -44,7 +44,7 @@
                     </div>
 
                     <div class="row g-3 mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label for="priority" class="form-label fw-semibold">Priority Severity</label>
                             <select class="form-select" id="priority" name="priority">
                                 <option value="Low">Low - Routine follow-up</option>
@@ -53,7 +53,16 @@
                                 <option value="Critical">Critical - Immediate emergency task force</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <label for="classification_level" class="form-label fw-semibold">Security Classification</label>
+                            <select class="form-select" id="classification_level" name="classification_level">
+                                {% for lvl in clearance_levels or ['PUBLIC', 'INTERNAL', 'CONFIDENTIAL', 'RESTRICTED'] %}
+                                <option value="{{ lvl }}" {% if lvl == 'INTERNAL' %}selected{% endif %}>{{ lvl }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text small">Your clearance: <strong>{{ current_user.clearance_level }}</strong></div>
+                        </div>
+                        <div class="col-md-4">
                             <label for="incident_location" class="form-label fw-semibold">Incident Location <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="incident_location" name="incident_location" placeholder="e.g. 500 N Michigan Ave, Chicago, IL" required>
                         </div>

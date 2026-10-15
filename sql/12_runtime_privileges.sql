@@ -22,6 +22,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON crime_db.case_assignments TO 'crimedb_ap
 GRANT SELECT, INSERT, UPDATE, DELETE ON crime_db.case_persons TO 'crimedb_app'@'localhost';
 GRANT SELECT, INSERT, UPDATE, DELETE ON crime_db.evidence TO 'crimedb_app'@'localhost';
 GRANT SELECT, INSERT, UPDATE, DELETE ON crime_db.investigation_notes TO 'crimedb_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON crime_db.citizens TO 'crimedb_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON crime_db.citizen_reports TO 'crimedb_app'@'localhost';
 
 -- 3. PUBLIC DATA & REFERENCE LOOKUPS: READ-ONLY (SELECT ONLY)
 -- Strict read-only access prevents accidental modification of public incident statistics

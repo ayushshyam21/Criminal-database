@@ -28,6 +28,7 @@
 | `email` | VARCHAR(120) | No | **UK** (`uq_user_email`), CHECK | None | Official email address with format validation. |
 | `password_hash` | VARCHAR(256) | No | None | None | Werkzeug salted scrypt password digest. |
 | `role` | ENUM('Admin','Officer','Investigator') | No | None | `'Officer'` | Role-based authorization type. |
+| `clearance_level` | ENUM('PUBLIC','INTERNAL','CONFIDENTIAL','RESTRICTED') | No | None | `'INTERNAL'` | Bell-LaPadula security clearance rank for classified case access. |
 | `full_name` | VARCHAR(100) | No | None | None | Officer full legal and operational name. |
 | `badge_number` | VARCHAR(30) | Yes | **UK** (`uq_user_badge`) | NULL | Official departmental badge identification. |
 | `is_active` | BOOLEAN | No | None | `TRUE` | Soft status flag indicating active service. |
@@ -47,6 +48,7 @@
 | `case_type` | ENUM(...) | No | None | None | Offense classification category. |
 | `status` | ENUM(...) | No | CHECK | `'Open'` | Workflow state: Open, Under Investigation, Closed, etc. |
 | `priority` | ENUM('Low','Medium','High','Critical') | No | None | `'Medium'` | Investigative resource priority tier. |
+| `classification_level` | ENUM('PUBLIC','INTERNAL','CONFIDENTIAL','RESTRICTED') | No | None | `'INTERNAL'` | Multi-Level Security (MLS) sensitivity classification. |
 | `incident_location` | VARCHAR(200) | No | None | None | Address or street block where offense occurred. |
 | `date_reported` | DATETIME | No | None | `CURRENT_TIMESTAMP` | Official date and time complaint was logged. |
 | `date_closed` | DATETIME | Yes | CHECK | NULL | Timestamp when case was officially resolved. |
@@ -194,3 +196,38 @@
 | `incident_year` | INT | No | CHECK (`incident_year >= 2001`) | None | Reporting calendar year. |
 | `updated_on` | DATETIME | Yes | None | NULL | Public portal last update timestamp. |
 | `imported_at` | DATETIME | No | None | `CURRENT_TIMESTAMP` | Local ingestion timestamp. |
+
+---
+
+## Table 13: `citizens`
+| Column Name | MySQL Data Type | Nullable | Key / Constraint | Default | Business Description |
+| :--- | :--- | :---: | :--- | :--- | :--- |
+| `citizen_id` | INT AUTO_INCREMENT | No | **PK** | None | Surrogate primary key for citizen user accounts. |
+| `email` | VARCHAR(150) | No | **UK** (`email`), INDEX | None | Unique citizen email login identifier. |
+| `password_hash` | VARCHAR(255) | No | None | None | Werkzeug salted scrypt digest (isolated from police staff). |
+| `full_name` | VARCHAR(150) | No | None | None | Citizen legal registrant name. |
+| `phone_number` | VARCHAR(30) | Yes | None | NULL | Contact telephone number for status updates. |
+| `address` | VARCHAR(255) | Yes | None | NULL | Citizen contact address. |
+| `is_active` | BOOLEAN | No | None | `TRUE` | Citizen account activation status. |
+| `created_at` | TIMESTAMP | No | INDEX | `CURRENT_TIMESTAMP` | Account registration timestamp. |
+| `updated_at` | TIMESTAMP | No | None | `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP` | Automatic update timestamp on citizen edit. |
+
+---
+
+## Table 14: `citizen_reports`
+| Column Name | MySQL Data Type | Nullable | Key / Constraint | Default | Business Description |
+| :--- | :--- | :---: | :--- | :--- | :--- |
+| `report_id` | INT AUTO_INCREMENT | No | **PK** | None | Surrogate primary key for citizen demo incident filings. |
+| `tracking_number` | VARCHAR(32) | No | **UK** (`tracking_number`), INDEX | None | Public tracking reference (`CR-YYYY-XXXXX`). |
+| `citizen_id` | INT | No | **FK** $\to$ `citizens(citizen_id)`, INDEX | None | Registered citizen owner of the submission. |
+| `category` | VARCHAR(60) | No | None | None | Incident category (e.g. Theft, Lost Property, Vandalism). |
+| `incident_date` | DATE | No | None | None | Calendar date when incident occurred. |
+| `incident_location` | VARCHAR(255) | No | None | None | Public address or landmark of the reported incident. |
+| `title` | VARCHAR(200) | No | None | None | Brief descriptive title of the citizen filing. |
+| `description` | TEXT | No | None | None | Detailed narrative description submitted by citizen. |
+| `status` | ENUM(...) | No | INDEX | `'Submitted'` | Workflow status: Submitted, Under Review, Information Requested, Resolved, Closed. |
+| `public_status_notes` | TEXT | Yes | None | NULL | Publicly viewable departmental status comments/requests. |
+| `is_demo_submission` | BOOLEAN | No | None | `TRUE` | Academic demonstration isolation flag. |
+| `created_at` | TIMESTAMP | No | INDEX | `CURRENT_TIMESTAMP` | Submission timestamp. |
+| `updated_at` | TIMESTAMP | No | None | `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP` | Status change timestamp. |
+

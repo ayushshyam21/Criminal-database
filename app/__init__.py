@@ -40,6 +40,8 @@ def create_app(config_class=Config):
     from app.routes.evidence import evidence_bp
     from app.routes.analytics import analytics_bp
     from app.routes.sql_demo import sql_demo_bp
+    from app.routes.citizen import citizen_bp
+    from app.routes.admin import admin_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -48,6 +50,8 @@ def create_app(config_class=Config):
     app.register_blueprint(evidence_bp)
     app.register_blueprint(analytics_bp)
     app.register_blueprint(sql_demo_bp)
+    app.register_blueprint(citizen_bp)
+    app.register_blueprint(admin_bp)
 
     # Custom Jinja Filters
     @app.template_filter("format_dt")
@@ -77,7 +81,41 @@ def create_app(config_class=Config):
         }
         return mapping.get(priority, "bg-light text-dark")
 
+    @app.template_filter("badge_classification")
+    def badge_classification(level):
+        mapping = {
+            "PUBLIC": "bg-secondary",
+            "INTERNAL": "bg-primary",
+            "CONFIDENTIAL": "bg-warning text-dark",
+            "RESTRICTED": "bg-danger"
+        }
+        return mapping.get((level or "").upper(), "bg-secondary")
+
+    @app.template_filter("badge_clearance")
+    def badge_clearance(level):
+        mapping = {
+            "PUBLIC": "bg-secondary",
+            "INTERNAL": "bg-primary",
+            "CONFIDENTIAL": "bg-warning text-dark",
+            "RESTRICTED": "bg-danger"
+        }
+        return mapping.get((level or "").upper(), "bg-secondary")
+
+    # Context Processor for Citizen Portal Session
+    @app.context_processor
+    def inject_citizen_portal():
+        from flask import session
+        from app.models import Citizen
+        citizen_id = session.get("citizen_id")
+        if citizen_id:
+            return {"current_citizen": Citizen.query.get(citizen_id)}
+        return {"current_citizen": None}
+
     # Error Handlers
+    @app.errorhandler(403)
+    def access_forbidden(e):
+        return render_template("errors/403.html", error=getattr(e, "description", "Access Forbidden")), 403
+
     @app.errorhandler(404)
     def page_not_found(e):
         return render_template("errors/404.html"), 404

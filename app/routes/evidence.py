@@ -3,11 +3,12 @@ app/routes/evidence.py
 Evidence repository management and immutable Chain-of-Custody tracking.
 """
 from datetime import datetime
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
 from sqlalchemy import or_, text
 from app.db import db
 from app.models import Evidence, EvidenceCustodyLog, Case
+from app.services.security_service import filter_cases_for_user, can_access_case
 
 evidence_bp = Blueprint("evidence", __name__, url_prefix="/evidence")
 
@@ -21,7 +22,9 @@ def list_evidence():
     status_filter = request.args.get("status", "")
     page = request.args.get("page", 1, type=int)
 
-    query = Evidence.query
+    # Restrict evidence visibility to cases within user's clearance and assignment scope
+    accessible_case_ids = filter_cases_for_user(Case.query, current_user).with_entities(Case.case_id).scalar_subquery()
+    query = Evidence.query.filter(Evidence.case_id.in_(accessible_case_ids))
 
     if search:
         s = f"%{search}%"
@@ -54,6 +57,13 @@ def list_evidence():
 @login_required
 def evidence_detail(evidence_id):
     item = Evidence.query.get_or_404(evidence_id)
+
+    # Verify authorization on associated case dossier
+    allowed, reason = can_access_case(current_user, item.case, action="view")
+    if not allowed:
+        flash(reason, "danger")
+        abort(403, description=reason)
+
     custody_history = EvidenceCustodyLog.query.filter_by(
         evidence_id=evidence_id
     ).order_by(EvidenceCustodyLog.logged_at.desc()).all()
@@ -68,6 +78,12 @@ def evidence_detail(evidence_id):
 @evidence_bp.route("/<int:evidence_id>/transfer", methods=["POST"])
 @login_required
 def transfer_custody(evidence_id):
+    item = Evidence.query.get_or_404(evidence_id)
+
+    allowed, reason = can_access_case(current_user, item.case, action="edit")
+    if not allowed:
+        flash(reason, "danger")
+        abort(403, description=reason)
     """
     Transfers custody location and/or status.
     Note: Updating evidence automatically fires trg_evidence_custody_update,

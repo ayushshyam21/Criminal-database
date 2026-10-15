@@ -39,6 +39,10 @@ class User(UserMixin, db.Model):
     email = Column(String(120), unique=True, nullable=False)
     password_hash = Column(String(256), nullable=False)
     role = Column(Enum("Admin", "Officer", "Investigator", name="user_role_enum"), default="Officer", nullable=False)
+    clearance_level = Column(
+        Enum("PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED", name="user_clearance_enum"),
+        default="INTERNAL", nullable=False
+    )
     full_name = Column(String(100), nullable=False)
     badge_number = Column(String(30), unique=True, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
@@ -113,6 +117,10 @@ class Case(db.Model):
     priority = Column(
         Enum("Low", "Medium", "High", "Critical", name="case_priority_enum"),
         default="Medium", nullable=False
+    )
+    classification_level = Column(
+        Enum("PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED", name="case_classification_enum"),
+        default="INTERNAL", nullable=False
     )
     incident_location = Column(String(200), nullable=False)
     date_reported = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -315,6 +323,7 @@ class VCaseSummary(db.Model):
     case_type = Column(String(50))
     status = Column(String(50))
     priority = Column(String(50))
+    classification_level = Column(String(50))
     station_name = Column(String(100))
     district_code = Column(String(10))
     lead_investigator = Column(String(100))
@@ -351,3 +360,58 @@ class VPublicIncidentTrends(db.Model):
     arrests_made = Column(Integer)
     domestic_incidents = Column(Integer)
     arrest_rate_pct = Column(Numeric(5, 2))
+
+
+# -------------------------------------------------------------------------
+# CITIZEN PORTAL MODELS (Completely isolated from internal police users)
+# -------------------------------------------------------------------------
+class Citizen(db.Model):
+    __tablename__ = "citizens"
+
+    citizen_id = Column(Integer, primary_key=True, autoincrement=True)
+    email = Column(String(150), unique=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    full_name = Column(String(150), nullable=False)
+    phone_number = Column(String(30), nullable=True)
+    address = Column(String(255), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    reports = relationship("CitizenReport", back_populates="citizen", cascade="all, delete-orphan")
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    def __repr__(self):
+        return f"<Citizen {self.email} ({self.full_name})>"
+
+
+class CitizenReport(db.Model):
+    __tablename__ = "citizen_reports"
+
+    report_id = Column(Integer, primary_key=True, autoincrement=True)
+    tracking_number = Column(String(32), unique=True, nullable=False)
+    citizen_id = Column(Integer, ForeignKey("citizens.citizen_id"), nullable=False)
+    category = Column(String(60), nullable=False)
+    incident_date = Column(Date, nullable=False)
+    incident_location = Column(String(255), nullable=False)
+    title = Column(String(200), nullable=False)
+    description = Column(Text, nullable=False)
+    status = Column(
+        Enum("Submitted", "Under Review", "Information Requested", "Resolved", "Closed", name="citizen_report_status_enum"),
+        default="Submitted", nullable=False
+    )
+    public_status_notes = Column(Text, nullable=True)
+    is_demo_submission = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    citizen = relationship("Citizen", back_populates="reports")
+
+    def __repr__(self):
+        return f"<CitizenReport {self.tracking_number}: {self.title} [{self.status}]>"
+

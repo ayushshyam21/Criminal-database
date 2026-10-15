@@ -12,6 +12,7 @@
                     <span class="badge bg-dark fs-6">{{ case.case_number }}</span>
                     <span class="badge {{ case.status|badge_status }} fs-6">{{ case.status }}</span>
                     <span class="badge {{ case.priority|badge_priority }} fs-6">{{ case.priority }} Priority</span>
+                    <span class="badge {{ case.classification_level|badge_classification }} fs-6"><i class="bi bi-shield-shaded me-1"></i>{{ case.classification_level }}</span>
                     <span class="badge bg-light text-dark border">{{ case.case_type }}</span>
                     <span class="badge bg-warning-subtle text-dark border border-warning"><i class="bi bi-shield-lock me-1"></i>FICTIONAL DOSSIER</span>
                 </div>

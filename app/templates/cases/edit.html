@@ -44,7 +44,7 @@
                     </div>
 
                     <div class="row g-3 mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label for="case_type" class="form-label fw-semibold">Crime Classification</label>
                             <select class="form-select" id="case_type" name="case_type" required>
                                 {% for ct in ['Homicide', 'Robbery', 'Assault', 'Burglary', 'Theft', 'Narcotics', 'Fraud', 'Cybercrime', 'Other'] %}
@@ -52,7 +52,16 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <label for="classification_level" class="form-label fw-semibold">Security Clearance Level</label>
+                            <select class="form-select" id="classification_level" name="classification_level">
+                                {% for lvl in clearance_levels or ['PUBLIC', 'INTERNAL', 'CONFIDENTIAL', 'RESTRICTED'] %}
+                                <option value="{{ lvl }}" {% if case.classification_level == lvl %}selected{% endif %}>{{ lvl }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text small">User clearance: <strong>{{ current_user.clearance_level }}</strong></div>
+                        </div>
+                        <div class="col-md-4">
                             <label for="station_id" class="form-label fw-semibold">Precinct Station</label>
                             <select class="form-select" id="station_id" name="station_id">
                                 {% for s in stations %}
