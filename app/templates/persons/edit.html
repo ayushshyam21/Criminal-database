@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ person.full_name }} - Persona Profile{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="d-flex align-items-center mb-3">
+            <a href="{{ url_for('persons.person_detail', person_id=person.person_id) }}" class="btn btn-outline-secondary btn-sm me-3">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <div>
+                <h3 class="fw-bold mb-0 text-dark">Edit Persona Profile</h3>
+                <small class="text-muted">Update details for {{ person.full_name }}</small>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-4">
+                <form method="POST" action="{{ url_for('persons.edit_person', person_id=person.person_id) }}">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="first_name" class="form-label fw-semibold">First Name</label>
+                            <input type="text" class="form-control" id="first_name" name="first_name" value="{{ person.first_name }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="last_name" class="form-label fw-semibold">Last Name</label>
+                            <input type="text" class="form-control" id="last_name" name="last_name" value="{{ person.last_name }}" required>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="gender" class="form-label fw-semibold">Gender</label>
+                            <select class="form-select" id="gender" name="gender">
+                                {% for g in ['Male', 'Female', 'Non-Binary', 'Unknown'] %}
+                                <option value="{{ g }}" {% if person.gender == g %}selected{% endif %}>{{ g }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="phone_contact" class="form-label fw-semibold">Phone Contact</label>
+                            <input type="text" class="form-control" id="phone_contact" name="phone_contact" value="{{ person.phone_contact or '' }}">
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="address_line" class="form-label fw-semibold">Fictional Address</label>
+                        <input type="text" class="form-control" id="address_line" name="address_line" value="{{ person.address_line or '' }}">
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="{{ url_for('persons.person_detail', person_id=person.person_id) }}" class="btn btn-outline-secondary px-4">Cancel</a>
+                        <button type="submit" class="btn btn-primary px-4 fw-semibold">
+                            <i class="bi bi-save me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

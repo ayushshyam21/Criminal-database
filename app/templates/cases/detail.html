@@ -1,0 +1,531 @@
+{% extends "base.html" %}
+
+{% block title %}{{ case.case_number }} - Case Dossier{% endblock %}
+
+{% block content %}
+<!-- Dossier Header -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                    <span class="badge bg-dark fs-6">{{ case.case_number }}</span>
+                    <span class="badge {{ case.status|badge_status }} fs-6">{{ case.status }}</span>
+                    <span class="badge {{ case.priority|badge_priority }} fs-6">{{ case.priority }} Priority</span>
+                    <span class="badge bg-light text-dark border">{{ case.case_type }}</span>
+                    <span class="badge bg-warning-subtle text-dark border border-warning"><i class="bi bi-shield-lock me-1"></i>FICTIONAL DOSSIER</span>
+                </div>
+                <h2 class="fw-bold text-dark mb-1">{{ case.title }}</h2>
+                <div class="text-muted small">
+                    <span class="me-3"><i class="bi bi-building me-1"></i><strong>Precinct:</strong> {{ case.station.station_name }} ({{ case.station.district_code }})</span>
+                    <span class="me-3"><i class="bi bi-geo-alt me-1"></i><strong>Location:</strong> {{ case.incident_location }}</span>
+                    <span class="me-3"><i class="bi bi-person me-1"></i><strong>Intake Officer:</strong> {{ case.creator.full_name }}</span>
+                    <span><i class="bi bi-calendar3 me-1"></i><strong>Reported:</strong> {{ case.date_reported|format_dt }}</span>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('cases.edit_case', case_id=case.case_id) }}" class="btn btn-outline-secondary btn-sm px-3">
+                    <i class="bi bi-pencil me-1"></i> Edit Dossier
+                </a>
+                {% if current_user.is_admin %}
+                <form method="POST" action="{{ url_for('cases.delete_case', case_id=case.case_id) }}" onsubmit="return confirm('Are you sure you want to permanently delete case {{ case.case_number }}?');">
+                    <button type="submit" class="btn btn-outline-danger btn-sm px-3">
+                        <i class="bi bi-trash me-1"></i> Delete
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Stored Function Metric Banner -->
+        <div class="alert alert-light border mt-3 mb-0 d-flex align-items-center justify-content-between flex-wrap gap-2 py-2">
+            <div>
+                <i class="bi bi-stopwatch text-primary me-2 fs-5"></i>
+                <strong>Investigation Duration:</strong> 
+                <span class="badge bg-primary fs-6 ms-1">{{ duration_days }} Days</span>
+                <span class="text-muted small ms-2">(Calculated live via Stored Function: <code>fn_case_duration({{ case.case_id }})</code>)</span>
+            </div>
+            {% if case.date_closed %}
+            <div class="text-success small fw-semibold">
+                <i class="bi bi-check-circle me-1"></i> Closed on {{ case.date_closed|format_dt }}
+            </div>
+            {% else %}
+            <div class="text-primary small fw-semibold">
+                <i class="bi bi-activity me-1"></i> Active Case Dossier
+            </div>
+            {% endif %}
+        </div>
+
+        {% if case.description %}
+        <div class="mt-3 p-3 bg-light rounded-2 border-start border-3 border-primary">
+            <h6 class="fw-bold mb-1 text-muted text-uppercase small">Incident Narrative</h6>
+            <p class="mb-0 text-dark">{{ case.description }}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Tabbed Workspace Sections -->
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-header bg-white border-bottom-0 pt-3 px-4">
+        <ul class="nav nav-tabs card-header-tabs" id="caseTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-semibold" id="assignments-tab" data-bs-toggle="tab" data-bs-target="#assignments" type="button" role="tab">
+                    <i class="bi bi-people me-1"></i> Personnel Allocations ({{ case.assignments|length }})
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold" id="persons-tab" data-bs-toggle="tab" data-bs-target="#persons" type="button" role="tab">
+                    <i class="bi bi-person-lines-fill me-1"></i> Involved Personas ({{ case.involved_persons|length }})
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold" id="evidence-tab" data-bs-toggle="tab" data-bs-target="#evidence" type="button" role="tab">
+                    <i class="bi bi-fingerprint me-1"></i> Evidence Items ({{ case.evidence_items|length }})
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold" id="notes-tab" data-bs-toggle="tab" data-bs-target="#notes" type="button" role="tab">
+                    <i class="bi bi-journal-text me-1"></i> Diary Notes ({{ visible_notes|length }})
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold" id="custody-tab" data-bs-toggle="tab" data-bs-target="#custody" type="button" role="tab">
+                    <i class="bi bi-clock-history me-1"></i> Case Custody Ledger ({{ custody_logs|length }})
+                </button>
+            </li>
+        </ul>
+    </div>
+
+    <div class="card-body p-4">
+        <div class="tab-content" id="caseTabsContent">
+
+            <!-- TAB 1: PERSONNEL ASSIGNMENTS (Stored Procedure sp_assign_case) -->
+            <div class="tab-pane fade show active" id="assignments" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h6 class="fw-bold mb-0">Assigned Investigative Personnel</h6>
+                        <small class="text-muted">Managed atomically via Stored Procedure <code>sp_assign_case</code></small>
+                    </div>
+                    {% if case.status != 'Closed' %}
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#assignPersonnelModal">
+                        <i class="bi bi-person-plus me-1"></i> Allocate Personnel
+                    </button>
+                    {% endif %}
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light small text-uppercase text-muted">
+                            <tr>
+                                <th>Personnel Officer</th>
+                                <th>Operational Capacity</th>
+                                <th>Assigned Date</th>
+                                <th>Unassigned Date</th>
+                                <th>Active Status</th>
+                                <th>Briefing Notes</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for a in case.assignments %}
+                            <tr class="{% if a.is_active and a.assignment_role == 'Lead Investigator' %}table-warning{% endif %}">
+                                <td>
+                                    <div class="fw-semibold">{{ a.user.full_name }}</div>
+                                    <small class="text-muted">Badge: {{ a.user.badge_number }} | {{ a.user.role }}</small>
+                                </td>
+                                <td>
+                                    {% if a.assignment_role == 'Lead Investigator' %}
+                                    <span class="badge bg-warning text-dark border border-dark"><i class="bi bi-star-fill me-1"></i>Lead Investigator</span>
+                                    {% else %}
+                                    <span class="badge bg-light text-dark border">{{ a.assignment_role }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="small">{{ a.assigned_date|format_dt }}</td>
+                                <td class="small text-muted">{{ a.unassigned_date|format_dt if a.unassigned_date else 'Active' }}</td>
+                                <td>
+                                    {% if a.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Concluded</span>
+                                    {% endif %}
+                                </td>
+                                <td class="small text-muted">{{ a.notes or '—' }}</td>
+                                <td class="text-end">
+                                    {% if a.is_active and case.status != 'Closed' %}
+                                    <form method="POST" action="{{ url_for('cases.unassign_personnel', case_id=case.case_id, assignment_id=a.assignment_id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm py-0" title="Deallocate Assignment">
+                                            Conclude
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">No personnel currently allocated to this case.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 2: INVOLVED PERSONAS -->
+            <div class="tab-pane fade" id="persons" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h6 class="fw-bold mb-0">Involved Demonstration Personas</h6>
+                        <small class="text-muted">M:N Associative Link via <code>case_persons</code></small>
+                    </div>
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addPersonModal">
+                        <i class="bi bi-person-plus me-1"></i> Link Persona to Case
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light small text-uppercase text-muted">
+                            <tr>
+                                <th>Persona Name</th>
+                                <th>Role in Case</th>
+                                <th>Gender</th>
+                                <th>Contact Information</th>
+                                <th>Statement / Narrative</th>
+                                <th class="text-end">Profile</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cp in case.involved_persons %}
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">{{ cp.person.full_name }}</div>
+                                    <small class="text-muted">DOB: {{ cp.person.date_of_birth or 'Unknown' }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge {% if cp.role_in_case == 'Suspect' %}bg-danger{% elif cp.role_in_case == 'Victim' %}bg-primary{% else %}bg-info text-dark{% endif %}">
+                                        {{ cp.role_in_case }}
+                                    </span>
+                                </td>
+                                <td>{{ cp.person.gender }}</td>
+                                <td class="small text-muted">{{ cp.person.phone_contact or 'No phone' }}<br>{{ cp.person.address_line or '' }}</td>
+                                <td class="small">{{ cp.statement_summary or 'No recorded statement.' }}</td>
+                                <td class="text-end">
+                                    <a href="{{ url_for('persons.person_detail', person_id=cp.person.person_id) }}" class="btn btn-sm btn-outline-secondary py-0">
+                                        <i class="bi bi-person-bounding-box"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">No personas associated with this case yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 3: CATALOGED EVIDENCE -->
+            <div class="tab-pane fade" id="evidence" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h6 class="fw-bold mb-0">Cataloged Forensic & Physical Evidence</h6>
+                        <small class="text-muted">Intake triggers automatic entry in <code>evidence_custody_log</code></small>
+                    </div>
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addEvidenceModal">
+                        <i class="bi bi-plus-circle me-1"></i> Intake Evidence
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light small text-uppercase text-muted">
+                            <tr>
+                                <th>Evidence Code</th>
+                                <th>Classification</th>
+                                <th>Item Description</th>
+                                <th>Current Storage Location</th>
+                                <th>Custody Status</th>
+                                <th>Intake Date</th>
+                                <th class="text-end">Custody Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for e in case.evidence_items %}
+                            <tr>
+                                <td class="fw-bold">
+                                    <a href="{{ url_for('evidence.evidence_detail', evidence_id=e.evidence_id) }}">
+                                        {{ e.evidence_code }}
+                                    </a>
+                                </td>
+                                <td><span class="badge bg-light text-dark border">{{ e.evidence_type }}</span></td>
+                                <td>{{ e.description }}</td>
+                                <td><i class="bi bi-geo-alt me-1 text-muted"></i>{{ e.current_storage_location }}</td>
+                                <td>
+                                    <span class="badge {% if e.current_custody_status == 'Vault Storage' %}bg-secondary{% elif e.current_custody_status == 'In Analysis' %}bg-info text-dark{% else %}bg-primary{% endif %}">
+                                        {{ e.current_custody_status }}
+                                    </span>
+                                </td>
+                                <td class="small text-muted">{{ e.collected_date|format_dt }}</td>
+                                <td class="text-end">
+                                    <a href="{{ url_for('evidence.evidence_detail', evidence_id=e.evidence_id) }}" class="btn btn-sm btn-outline-primary py-0">
+                                        <i class="bi bi-clock-history me-1"></i> Custody History
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">No evidence cataloged for this case.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 4: INVESTIGATION DIARY NOTES -->
+            <div class="tab-pane fade" id="notes" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h6 class="fw-bold mb-0">Investigation Chronological Diary Notes</h6>
+                        <small class="text-muted">Confidential notes restricted to authorized personnel</small>
+                    </div>
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addNoteModal">
+                        <i class="bi bi-pencil-square me-1"></i> Add Diary Note
+                    </button>
+                </div>
+
+                <div class="list-group">
+                    {% for n in visible_notes %}
+                    <div class="list-group-item p-3 mb-2 rounded-2 border">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <h6 class="fw-bold mb-0 text-dark">
+                                {{ n.note_title }}
+                                {% if n.is_confidential %}
+                                <span class="badge bg-danger ms-2"><i class="bi bi-lock-fill me-1"></i>CONFIDENTIAL</span>
+                                {% endif %}
+                            </h6>
+                            <small class="text-muted">{{ n.logged_at|format_dt }}</small>
+                        </div>
+                        <p class="mb-1 text-secondary">{{ n.note_body }}</p>
+                        <small class="text-muted">Logged by: <strong>{{ n.author.full_name }}</strong> (Badge: {{ n.author.badge_number }})</small>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">No investigation notes recorded yet.</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- TAB 5: CASE CUSTODY LEDGER -->
+            <div class="tab-pane fade" id="custody" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h6 class="fw-bold mb-0">Immutable Chain-of-Custody Historical Ledger</h6>
+                        <small class="text-muted">Generated strictly via database triggers (<code>trg_evidence_initial_custody</code> & <code>trg_evidence_custody_update</code>)</small>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead class="table-light small text-uppercase text-muted">
+                            <tr>
+                                <th>Item Code</th>
+                                <th>Movement / Status Transition</th>
+                                <th>From &rarr; To Location</th>
+                                <th>Handler</th>
+                                <th>Reason for Transfer</th>
+                                <th>Logged Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in custody_logs %}
+                            <tr>
+                                <td class="fw-bold">{{ log.evidence.evidence_code }}</td>
+                                <td>
+                                    <span class="badge bg-light text-muted border">{{ log.previous_status or 'Intake' }}</span>
+                                    &rarr;
+                                    <span class="badge bg-primary">{{ log.new_status }}</span>
+                                </td>
+                                <td class="small">{{ log.from_location or 'Discovery Scene' }} &rarr; <strong>{{ log.to_location }}</strong></td>
+                                <td class="small">{{ log.handler.full_name if log.handler else 'System Intake' }}</td>
+                                <td class="small text-muted">{{ log.reason_for_transfer }}</td>
+                                <td class="small text-muted">{{ log.logged_at|format_dt }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">No custody events recorded for items in this case.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Assign Personnel (Calls sp_assign_case) -->
+<div class="modal fade" id="assignPersonnelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('cases.assign_personnel', case_id=case.case_id) }}">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title"><i class="bi bi-person-plus me-2 text-warning"></i>Allocate Personnel to Dossier</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2 small">
+                        <i class="bi bi-info-circle me-1"></i> Calls Stored Procedure <code>sp_assign_case</code>. Enforces max 1 active Lead Investigator.
+                    </div>
+                    <div class="mb-3">
+                        <label for="assign_user" class="form-label fw-semibold">Certified Officer / Investigator</label>
+                        <select class="form-select" id="assign_user" name="user_id" required>
+                            <option value="" disabled selected>Select personnel...</option>
+                            {% for u in available_users %}
+                            <option value="{{ u.user_id }}">{{ u.full_name }} ({{ u.role }} - Badge: {{ u.badge_number }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="assign_role" class="form-label fw-semibold">Assignment Capacity</label>
+                        <select class="form-select" id="assign_role" name="role" required>
+                            <option value="Lead Investigator">Lead Investigator (Primary Dossier Head)</option>
+                            <option value="Assisting Officer" selected>Assisting Officer</option>
+                            <option value="Forensic Specialist">Forensic Specialist</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="assign_notes" class="form-label fw-semibold">Assignment Scope / Notes</label>
+                        <input type="text" class="form-control" id="assign_notes" name="notes" placeholder="e.g. Lead forensics and surveillance coordination">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Execute Assignment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Add Persona -->
+<div class="modal fade" id="addPersonModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('cases.add_person', case_id=case.case_id) }}">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title"><i class="bi bi-person-plus me-2 text-warning"></i>Link Demonstration Persona</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="person_select" class="form-label fw-semibold">Persona</label>
+                        <select class="form-select" id="person_select" name="person_id" required>
+                            <option value="" disabled selected>Select Persona...</option>
+                            {% for p in available_persons %}
+                            <option value="{{ p.person_id }}">{{ p.full_name }} ({{ p.gender }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="role_in_case" class="form-label fw-semibold">Role in Case</label>
+                        <select class="form-select" id="role_in_case" name="role_in_case" required>
+                            <option value="Suspect">Suspect</option>
+                            <option value="Victim">Victim</option>
+                            <option value="Witness">Witness</option>
+                            <option value="Person of Interest">Person of Interest</option>
+                            <option value="Reporting Party">Reporting Party</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="statement_summary" class="form-label fw-semibold">Statement Summary</label>
+                        <textarea class="form-control" id="statement_summary" name="statement_summary" rows="3" placeholder="Summary of interview or evidence of involvement..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Link Persona</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Intake Evidence -->
+<div class="modal fade" id="addEvidenceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('cases.add_evidence', case_id=case.case_id) }}">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title"><i class="bi bi-fingerprint me-2 text-warning"></i>Intake Forensic Evidence</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-secondary py-2 small">
+                        <i class="bi bi-shield-check me-1"></i> Trigger <code>trg_evidence_initial_custody</code> will initiate custody tracking automatically.
+                    </div>
+                    <div class="mb-3">
+                        <label for="evidence_type" class="form-label fw-semibold">Classification Type</label>
+                        <select class="form-select" id="evidence_type" name="evidence_type" required>
+                            <option value="Physical">Physical Evidence</option>
+                            <option value="Digital">Digital / Electronic</option>
+                            <option value="Forensic">Forensic / Biological</option>
+                            <option value="Documentary">Documentary</option>
+                            <option value="Weapons">Weapons / Ballistics</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="evidence_desc" class="form-label fw-semibold">Item Description</label>
+                        <textarea class="form-control" id="evidence_desc" name="description" rows="2" placeholder="e.g. 9mm shell casing recovered from south entry threshold" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="evidence_loc" class="form-label fw-semibold">Initial Storage Facility / Locker</label>
+                        <input type="text" class="form-control" id="evidence_loc" name="current_storage_location" placeholder="e.g. CPD Central Vault - Locker 4B" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Intake Evidence</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Add Diary Note -->
+<div class="modal fade" id="addNoteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('cases.add_note', case_id=case.case_id) }}">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title"><i class="bi bi-journal-plus me-2 text-warning"></i>Record Investigation Diary Note</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="note_title" class="form-label fw-semibold">Note Heading / Title</label>
+                        <input type="text" class="form-control" id="note_title" name="note_title" placeholder="e.g. Canvassing report of commercial alley cameras" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="note_body" class="form-label fw-semibold">Diary Entry Content</label>
+                        <textarea class="form-control" id="note_body" name="note_body" rows="4" placeholder="Detail investigative leads, phone briefings, surveillance summaries..." required></textarea>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="is_confidential" name="is_confidential">
+                        <label class="form-check-label fw-semibold" for="is_confidential">Mark as Confidential (Restricted to Investigators & Admins)</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Record Entry</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

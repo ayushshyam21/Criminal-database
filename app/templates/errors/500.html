@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Internal System Error - 500{% endblock %}
+
+{% block content %}
+<div class="text-center py-5">
+    <div class="display-1 fw-bold text-danger mb-2">500</div>
+    <h3 class="fw-bold text-dark">Database or Application Exception</h3>
+    <p class="text-muted mb-3">An unexpected database error occurred during transaction processing. The active transaction was safely rolled back.</p>
+    {% if error %}
+    <div class="alert alert-danger d-inline-block text-start small font-monospace mb-4" style="max-width: 600px;">
+        {{ error }}
+    </div>
+    <br>
+    {% endif %}
+    <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary px-4">
+        <i class="bi bi-arrow-clockwise me-1"></i> Return to Operations Dashboard
+    </a>
+</div>
+{% endblock %}

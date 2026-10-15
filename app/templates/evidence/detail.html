@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}{{ evidence.evidence_code }} - Chain of Custody{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex align-items-center">
+                <a href="{{ url_for('evidence.list_evidence') }}" class="btn btn-outline-secondary btn-sm me-3">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                <div>
+                    <h3 class="fw-bold mb-0 text-dark">{{ evidence.evidence_code }}</h3>
+                    <small class="text-muted">Forensic Chain of Custody Dossier</small>
+                </div>
+            </div>
+            <button class="btn btn-primary btn-sm px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#transferModal">
+                <i class="bi bi-arrow-left-right me-1"></i> Transfer Custody / Location
+            </button>
+        </div>
+
+        <!-- Evidence Overview Card -->
+        <div class="card border-0 shadow-sm rounded-3 mb-4">
+            <div class="card-body p-4">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Classification</small>
+                        <span class="badge bg-light text-dark border fs-6">{{ evidence.evidence_type }}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Current Status</small>
+                        <span class="badge {% if evidence.current_custody_status == 'Vault Storage' %}bg-secondary{% elif evidence.current_custody_status == 'In Analysis' %}bg-info text-dark{% else %}bg-primary{% endif %} fs-6">
+                            {{ evidence.current_custody_status }}
+                        </span>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Current Physical Location</small>
+                        <span class="fw-semibold text-dark"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ evidence.current_storage_location }}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Linked Case Dossier</small>
+                        <a href="{{ url_for('cases.case_detail', case_id=evidence.case.case_id) }}" class="fw-bold text-decoration-none">
+                            {{ evidence.case.case_number }}
+                        </a>
+                    </div>
+                    <div class="col-12 mt-3 pt-3 border-top">
+                        <small class="text-muted d-block">Item Description</small>
+                        <p class="mb-0 fw-semibold text-dark">{{ evidence.description }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Immutable Chain-of-Custody Timeline -->
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-clock-history me-2 text-primary"></i>Immutable Custody Ledger</h5>
+                    <small class="text-muted">Strictly append-only ledger maintained by database triggers</small>
+                </div>
+                <span class="badge bg-light text-muted border">TABLE: evidence_custody_log</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light small text-uppercase text-muted">
+                        <tr>
+                            <th>Custody Event #</th>
+                            <th>Status Transition</th>
+                            <th>Location Route</th>
+                            <th>Handler / Custodian</th>
+                            <th>Operational Transfer Reason</th>
+                            <th>Logged At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in custody_history %}
+                        <tr>
+                            <td class="fw-bold text-muted">#{{ log.custody_id }}</td>
+                            <td>
+                                <span class="badge bg-light text-muted border">{{ log.previous_status or 'Intake' }}</span>
+                                <i class="bi bi-arrow-right mx-1 text-muted"></i>
+                                <span class="badge bg-primary">{{ log.new_status }}</span>
+                            </td>
+                            <td>
+                                <small class="text-muted">{{ log.from_location or 'Discovery Scene' }}</small>
+                                <i class="bi bi-arrow-right mx-1 text-primary"></i>
+                                <strong>{{ log.to_location }}</strong>
+                            </td>
+                            <td>
+                                <div class="fw-semibold">{{ log.handler.full_name if log.handler else 'System Intake' }}</div>
+                                <small class="text-muted">{{ log.handler.badge_number if log.handler else 'Automated' }}</small>
+                            </td>
+                            <td>{{ log.reason_for_transfer }}</td>
+                            <td class="small text-muted">{{ log.logged_at|format_dt }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">No custody events logged yet.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Transfer Custody -->
+<div class="modal fade" id="transferModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('evidence.transfer_custody', evidence_id=evidence.evidence_id) }}">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title"><i class="bi bi-arrow-left-right me-2 text-warning"></i>Transfer Custody & Location</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2 small">
+                        <i class="bi bi-shield-check me-1"></i> Trigger <code>trg_evidence_custody_update</code> will automatically record your authenticated user ID into the immutable historical custody ledger.
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_status" class="form-label fw-semibold">New Custody Status</label>
+                        <select class="form-select" id="new_status" name="new_status" required>
+                            {% for cs in ['Collected', 'In Analysis', 'Vault Storage', 'Court Presentation', 'Disposed'] %}
+                            <option value="{{ cs }}" {% if evidence.current_custody_status == cs %}selected{% endif %}>{{ cs }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_location" class="form-label fw-semibold">Destination Location / Locker <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="new_location" name="new_location" placeholder="e.g. State Forensic Crime Lab - Room 204" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reason" class="form-label fw-semibold">Reason for Transfer <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="reason" name="reason" placeholder="e.g. Ballistics comparison and DNA profiling" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Confirm Transfer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

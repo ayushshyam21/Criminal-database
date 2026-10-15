@@ -1,0 +1,172 @@
+erDiagram
+    POLICE_STATIONS ||--o{ USERS : "employs (0..N)"
+    POLICE_STATIONS ||--|{ CASES : "jurisdiction for (1..N)"
+    
+    USERS ||--o{ CASES : "registers (0..N)"
+    USERS ||--o{ CASE_ASSIGNMENTS : "assigned to (0..N)"
+    USERS ||--o{ EVIDENCE : "collected by (0..N)"
+    USERS ||--o{ EVIDENCE_CUSTODY_LOG : "custody handled by (0..N)"
+    USERS ||--o{ INVESTIGATION_NOTES : "authors (0..N)"
+
+    CASES ||--o{ CASE_ASSIGNMENTS : "allocates (0..N)"
+    CASES ||--o{ CASE_PERSONS : "involves (0..N)"
+    CASES ||--o{ EVIDENCE : "contains (0..N)"
+    CASES ||--o{ INVESTIGATION_NOTES : "documents (0..N)"
+
+    PERSONS ||--o{ CASE_PERSONS : "linked to (0..N)"
+    EVIDENCE ||--o{ EVIDENCE_CUSTODY_LOG : "tracked by (0..N)"
+    IUCR_CODES ||--o{ PUBLIC_CRIME_INCIDENTS : "categorizes (0..N)"
+
+    POLICE_STATIONS {
+        int station_id PK
+        varchar station_name UK
+        varchar district_code UK
+        varchar address
+        varchar phone
+        datetime created_at
+    }
+
+    USERS {
+        int user_id PK
+        int station_id FK
+        varchar username UK
+        varchar email UK
+        varchar password_hash
+        enum role
+        varchar full_name
+        varchar badge_number UK
+        boolean is_active
+        datetime created_at
+        datetime updated_at
+    }
+
+    CASES {
+        int case_id PK
+        varchar case_number UK
+        int station_id FK
+        varchar title
+        text description
+        enum case_type
+        enum status
+        enum priority
+        varchar incident_location
+        datetime date_reported
+        datetime date_closed
+        int created_by FK
+        boolean is_fictional
+        datetime created_at
+        datetime updated_at
+    }
+
+    PERSONS {
+        int person_id PK
+        varchar first_name
+        varchar last_name
+        date date_of_birth
+        enum gender
+        varchar phone_contact
+        varchar address_line
+        boolean is_fictional
+        datetime created_at
+    }
+
+    CASE_ASSIGNMENTS {
+        int assignment_id PK
+        int case_id FK
+        int user_id FK
+        enum assignment_role
+        datetime assigned_date
+        datetime unassigned_date
+        boolean is_active
+        varchar notes
+        varchar active_assignment_key UK
+        varchar active_lead_key UK
+    }
+
+    CASE_PERSONS {
+        int case_person_id PK
+        int case_id FK
+        int person_id FK
+        enum role_in_case
+        text statement_summary
+        datetime added_at
+    }
+
+    EVIDENCE {
+        int evidence_id PK
+        int case_id FK
+        varchar evidence_code UK
+        enum evidence_type
+        text description
+        varchar current_storage_location
+        enum current_custody_status
+        datetime collected_date
+        int collected_by FK
+        datetime created_at
+    }
+
+    EVIDENCE_CUSTODY_LOG {
+        int custody_id PK
+        int evidence_id FK
+        enum previous_status
+        enum new_status
+        varchar from_location
+        varchar to_location
+        int handled_by FK
+        varchar reason_for_transfer
+        datetime logged_at
+    }
+
+    INVESTIGATION_NOTES {
+        int note_id PK
+        int case_id FK
+        int author_id FK
+        varchar note_title
+        text note_body
+        boolean is_confidential
+        datetime logged_at
+    }
+
+    IUCR_CODES {
+        varchar iucr_code PK
+        varchar primary_type
+        varchar description
+        varchar fbi_code
+        boolean is_active
+    }
+
+    PUBLIC_CRIME_INCIDENTS {
+        int incident_id PK
+        bigint source_id UK
+        varchar case_number
+        datetime incident_date
+        varchar block
+        varchar source_iucr_code
+        varchar source_primary_type
+        varchar source_description
+        varchar canonical_iucr_code FK
+        varchar location_description
+        boolean arrest_made
+        boolean domestic
+        varchar beat
+        varchar district
+        int ward
+        varchar community_area
+        varchar fbi_code
+        decimal latitude
+        decimal longitude
+        int incident_year
+        datetime updated_on
+        datetime imported_at
+    }
+
+    AUDIT_LOG {
+        int log_id PK
+        varchar table_name
+        int record_id
+        enum operation_type
+        json old_values
+        json new_values
+        varchar performed_by
+        datetime timestamp
+    }

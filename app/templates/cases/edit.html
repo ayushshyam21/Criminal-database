@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ case.case_number }} - Case Dossier{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="d-flex align-items-center mb-3">
+            <a href="{{ url_for('cases.case_detail', case_id=case.case_id) }}" class="btn btn-outline-secondary btn-sm me-3">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <div>
+                <h3 class="fw-bold mb-0 text-dark">Modify Case Dossier</h3>
+                <small class="text-muted">Update administrative parameters, status transition, or closure for {{ case.case_number }}</small>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-4">
+                <form method="POST" action="{{ url_for('cases.edit_case', case_id=case.case_id) }}">
+                    <div class="mb-3">
+                        <label for="title" class="form-label fw-semibold">Case Title</label>
+                        <input type="text" class="form-control" id="title" name="title" value="{{ case.title }}" required>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="status" class="form-label fw-semibold">Dossier Workflow Status</label>
+                            <select class="form-select" id="status" name="status" required>
+                                {% for st in ['Open', 'Under Investigation', 'Pending Review', 'Closed', 'Cold Case'] %}
+                                <option value="{{ st }}" {% if case.status == st %}selected{% endif %}>{{ st }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted d-block mt-1">Changing status triggers <code>trg_cases_status_audit</code> to write to <code>audit_log</code>.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="priority" class="form-label fw-semibold">Priority Severity</label>
+                            <select class="form-select" id="priority" name="priority" required>
+                                {% for pr in ['Low', 'Medium', 'High', 'Critical'] %}
+                                <option value="{{ pr }}" {% if case.priority == pr %}selected{% endif %}>{{ pr }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="case_type" class="form-label fw-semibold">Crime Classification</label>
+                            <select class="form-select" id="case_type" name="case_type" required>
+                                {% for ct in ['Homicide', 'Robbery', 'Assault', 'Burglary', 'Theft', 'Narcotics', 'Fraud', 'Cybercrime', 'Other'] %}
+                                <option value="{{ ct }}" {% if case.case_type == ct %}selected{% endif %}>{{ ct }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="station_id" class="form-label fw-semibold">Precinct Station</label>
+                            <select class="form-select" id="station_id" name="station_id">
+                                {% for s in stations %}
+                                <option value="{{ s.station_id }}" {% if case.station_id == s.station_id %}selected{% endif %}>{{ s.district_code }} - {{ s.station_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="incident_location" class="form-label fw-semibold">Incident Location</label>
+                        <input type="text" class="form-control" id="incident_location" name="incident_location" value="{{ case.incident_location }}" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="description" class="form-label fw-semibold">Incident Summary & Narrative</label>
+                        <textarea class="form-control" id="description" name="description" rows="4">{{ case.description or '' }}</textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="{{ url_for('cases.case_detail', case_id=case.case_id) }}" class="btn btn-outline-secondary px-4">Cancel</a>
+                        <button type="submit" class="btn btn-primary px-4 fw-semibold">
+                            <i class="bi bi-save me-1"></i> Update Dossier
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,36 @@
+flowchart TD
+    subgraph EERD_Diagram["Enhanced Entity-Relationship Diagram (EERD)"]
+        direction TB
+
+        subgraph UserSpecialization["Disjoint Total Specialization: System Personnel"]
+            USERS["USERS (Supertype Entity)\n────────────────────────\nuser_id (PK)\nusername (UK)\nemail (UK)\npassword_hash\nbadge_number (UK)\nstation_id (FK)\nis_active"]
+            
+            DISJ{"d, t\nDisjoint, Total"}
+
+            ADMIN["ADMINISTRATOR (Subtype)\n────────────────────────\n• System Configuration\n• Personnel Credential Mgmt\n• System-Wide Audit Log Review\n• Public Data Batch Importer"]
+            
+            OFFICER["POLICE OFFICER (Subtype)\n────────────────────────\n• Case Dossier Initial Intake\n• Persona Registry Management\n• Evidence Cataloging & Tagging\n• Assisting Operational Support"]
+            
+            INVESTIGATOR["INVESTIGATOR (Subtype)\n────────────────────────\n• Lead Case Investigation\n• Investigation Diary Notes\n• Evidence Custody Processing\n• Case Closure Recommendation"]
+
+            USERS --> DISJ
+            DISJ -->|role = 'Admin'| ADMIN
+            DISJ -->|role = 'Officer'| OFFICER
+            DISJ -->|role = 'Investigator'| INVESTIGATOR
+        end
+
+        subgraph RelationalMapping["Relational Schema Realization"]
+            MAP_NOTE["Mapping Strategy: Single Table with Type Discriminator\nTable: users (role ENUM('Admin', 'Officer', 'Investigator') NOT NULL)\nJustification: Identical base attributes across operational roles;\neliminates polymorphic multi-table outer joins while enforcing completeness."]
+        end
+
+        subgraph DomainSeparation["Architectural Domain Partitioning"]
+            APP_DOMAIN["APPLICATION DOSSIER DOMAIN\n(Internal Police Records)\n────────────────────────\n• cases (is_fictional = TRUE)\n• persons (is_fictional = TRUE)\n• case_assignments\n• case_persons\n• evidence & evidence_custody_log\n• investigation_notes"]
+
+            PUB_DOMAIN["PUBLIC CRIME INCIDENT DOMAIN\n(City of Chicago Open Data)\n────────────────────────\n• public_crime_incidents (read-only)\n• iucr_codes (lookup standards)\n• source_id (unique ingestion key)\n• Zero Linkage to Fictional Personas"]
+
+            ISOLATION_BARRIER{{"Strict Architectural & Relational Isolation Barrier\n(Zero Cross-Domain Foreign Keys)"}}
+
+            APP_DOMAIN -.-> ISOLATION_BARRIER
+            PUB_DOMAIN -.-> ISOLATION_BARRIER
+        end
+    end

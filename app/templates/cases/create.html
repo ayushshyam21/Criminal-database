@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Register Case Dossier - Crime Record DBMS{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="d-flex align-items-center mb-3">
+            <a href="{{ url_for('cases.list_cases') }}" class="btn btn-outline-secondary btn-sm me-3">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <div>
+                <h3 class="fw-bold mb-0 text-dark">Register New Case Dossier</h3>
+                <small class="text-muted">Enter case intake specifications into the precinct records</small>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-4">
+                <form method="POST" action="{{ url_for('cases.create_case') }}">
+                    <div class="mb-3">
+                        <label for="title" class="form-label fw-semibold">Case Title <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="title" name="title" placeholder="e.g. Armed Commercial Robbery at Michigan Ave Retailer" required>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="station_id" class="form-label fw-semibold">Jurisdictional Precinct <span class="text-danger">*</span></label>
+                            <select class="form-select" id="station_id" name="station_id" required>
+                                <option value="" disabled selected>Select Precinct Station...</option>
+                                {% for s in stations %}
+                                <option value="{{ s.station_id }}">{{ s.district_code }} - {{ s.station_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="case_type" class="form-label fw-semibold">Crime Classification <span class="text-danger">*</span></label>
+                            <select class="form-select" id="case_type" name="case_type" required>
+                                {% for ct in ['Homicide', 'Robbery', 'Assault', 'Burglary', 'Theft', 'Narcotics', 'Fraud', 'Cybercrime', 'Other'] %}
+                                <option value="{{ ct }}" {% if ct == 'Theft' %}selected{% endif %}>{{ ct }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="priority" class="form-label fw-semibold">Priority Severity</label>
+                            <select class="form-select" id="priority" name="priority">
+                                <option value="Low">Low - Routine follow-up</option>
+                                <option value="Medium" selected>Medium - Standard investigation</option>
+                                <option value="High">High - Urgent response</option>
+                                <option value="Critical">Critical - Immediate emergency task force</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="incident_location" class="form-label fw-semibold">Incident Location <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="incident_location" name="incident_location" placeholder="e.g. 500 N Michigan Ave, Chicago, IL" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="description" class="form-label fw-semibold">Incident Summary & Narrative</label>
+                        <textarea class="form-control" id="description" name="description" rows="4" placeholder="Detail observed facts, immediate witness statements, initial dispatch notes..."></textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="{{ url_for('cases.list_cases') }}" class="btn btn-outline-secondary px-4">Cancel</a>
+                        <button type="submit" class="btn btn-primary px-4 fw-semibold">
+                            <i class="bi bi-folder-plus me-1"></i> Register Dossier
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

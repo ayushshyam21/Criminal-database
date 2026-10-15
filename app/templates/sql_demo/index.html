@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}SQL Demonstration - Relational Database Showcase{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <h3 class="fw-bold mb-0 text-dark">
+            <i class="bi bi-mortarboard-fill text-warning me-2"></i>SQL Demonstration & Benchmarks
+        </h3>
+        <p class="text-muted mb-0">Live interactive execution of advanced relational features and database benchmarks</p>
+    </div>
+    <div class="d-flex gap-2">
+        <span class="badge bg-dark py-2 px-3 align-self-center"><i class="bi bi-database me-1 text-warning"></i>MySQL 8.0+ / 9.x</span>
+        <span class="badge bg-primary py-2 px-3 align-self-center"><i class="bi bi-shield-check me-1"></i>BCNF Normalized</span>
+    </div>
+</div>
+
+<!-- Tab Navigation -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-header bg-white border-bottom-0 pt-3 px-4">
+        <ul class="nav nav-pills card-header-pills">
+            <li class="nav-item">
+                <a class="nav-link {% if active_tab == 'joins' %}active{% endif %}" href="{{ url_for('sql_demo.index', tab='joins') }}">
+                    <i class="bi bi-diagram-3 me-1"></i> 1. Multi-Table JOINs
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if active_tab == 'nested' %}active{% endif %}" href="{{ url_for('sql_demo.index', tab='nested') }}">
+                    <i class="bi bi-layers me-1"></i> 2. Nested Queries & Windowing
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if active_tab == 'views' %}active{% endif %}" href="{{ url_for('sql_demo.index', tab='views') }}">
+                    <i class="bi bi-table me-1"></i> 3. Database Views
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if active_tab == 'routines' %}active{% endif %}" href="{{ url_for('sql_demo.index', tab='routines') }}">
+                    <i class="bi bi-gear-wide-connected me-1"></i> 4. Stored Routines
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if active_tab == 'triggers' %}active{% endif %}" href="{{ url_for('sql_demo.index', tab='triggers') }}">
+                    <i class="bi bi-shield-lock me-1"></i> 5. Trigger Audit Ledgers
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if active_tab == 'explain' %}active{% endif %}" href="{{ url_for('sql_demo.index', tab='explain') }}">
+                    <i class="bi bi-speedometer me-1"></i> 6. EXPLAIN Benchmark Plans
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger shadow-sm">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Query Execution Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+{% if active_tab != 'triggers' %}
+<!-- Query Execution Panel -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2 px-3">
+        <span class="small font-monospace"><i class="bi bi-terminal text-warning me-2"></i>Executed Live SQL Query</span>
+        <span class="badge bg-secondary font-monospace">MySQL Server 9.7</span>
+    </div>
+    <div class="card-body p-0">
+        <pre class="bg-dark text-light p-3 mb-0 font-monospace small" style="border-radius: 0 0 8px 8px; overflow-x: auto;">{{ query_sql }}</pre>
+    </div>
+</div>
+
+<!-- Results Grid -->
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-grid-3x3 me-2 text-primary"></i>Live Query Results ({{ results.rows|length if results.rows else 0 }} rows)</h6>
+        <span class="badge bg-success-subtle text-success border border-success"><i class="bi bi-check-circle me-1"></i>Live MySQL Query</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0 font-monospace small">
+            <thead class="table-light text-uppercase text-muted">
+                <tr>
+                    {% for col in results.columns %}
+                    <th>{{ col }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in results.rows %}
+                <tr>
+                    {% for val in row %}
+                    <td>{{ val if val is not none else 'NULL' }}</td>
+                    {% endfor %}
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="{{ results.columns|length or 1 }}" class="text-center py-4 text-muted">No records returned.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% else %}
+<!-- TAB 5: TRIGGER AUDIT LEDGERS -->
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-shield-shaded me-2 text-primary"></i>Dossier Audit Ledger (<code>audit_log</code>)</h6>
+                <span class="badge bg-light text-muted border">TRIGGER: trg_cases_status_audit</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0 small">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Table</th>
+                            <th>Action</th>
+                            <th>Actor</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in audit_records %}
+                        <tr>
+                            <td>#{{ a.log_id }}</td>
+                            <td>{{ a.table_name }}</td>
+                            <td><span class="badge bg-warning text-dark">{{ a.operation_type }}</span></td>
+                            <td class="fw-semibold">{{ a.performed_by or 'System' }}</td>
+                            <td class="text-muted">{{ a.timestamp|format_dt }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">
+                                No audit events recorded yet. Edit a case status to trigger an audit record!
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-clock-history me-2 text-warning"></i>Custody History Ledger (<code>evidence_custody_log</code>)</h6>
+                <span class="badge bg-light text-muted border">TRIGGER: trg_evidence_custody_update</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0 small">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Custody #</th>
+                            <th>Item Code</th>
+                            <th>Status Transition</th>
+                            <th>Route</th>
+                            <th>Logged</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in custody_records %}
+                        <tr>
+                            <td>#{{ c.custody_id }}</td>
+                            <td class="fw-bold">{{ c.evidence.evidence_code }}</td>
+                            <td>
+                                <span class="badge bg-light text-muted border">{{ c.previous_status or 'Intake' }}</span>
+                                &rarr;
+                                <span class="badge bg-primary">{{ c.new_status }}</span>
+                            </td>
+                            <td class="text-truncate" style="max-width: 140px;">{{ c.to_location }}</td>
+                            <td class="text-muted">{{ c.logged_at|format_dt }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">No custody events recorded.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
