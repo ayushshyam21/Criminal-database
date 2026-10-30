@@ -1,0 +1,26 @@
+================================================================================
+03: LITERATURE REVIEW (CHAPTER 3)
+================================================================================
+Project: Criminal Case Management & Crime Analytics System (BACSE202)
+Course: Database Systems | VIT Chennai, SCOPE | October 2026
+Team: Ayush Sharma [25BAI1392] & Ojas Sugur [25BAI1222]
+Scope: Chapter 3: Literature Survey & Existing Systems, Table 3.1 Literature Comparison
+--------------------------------------------------------------------------------
+
+
+### Chapter 3: Literature Survey & Existing Systems
+
+During the initial literature survey for Digital Assignment 1 (DA1), Ojas Sugur evaluated several academic studies on digital policing, automated FIR systems, and police record architectures. During the final implementation phase, we revisited and expanded this analysis to study relational database normalization and access control models:
+
+Table 3.1. Comparison of prior policing systems and current CCMS architecture
+
+Study & Authors           | Architecture / Tech         | Key Contributions                             | Observed Limitations                         
+--------------------------+-----------------------------+-----------------------------------------------+----------------------------------------------
+Sharma et al. (2022)      | PHP + MySQL Web Application | Role-Based Access Control; reduced police pap | Lacked cybercrime specifics (IP addresses, tr
+Adebayo & Oladipo (2021)  | Java Swing + MySQL (JDBC)   | Enforced foreign key constraints to eliminate | Heavy graphical desktop client ran poorly on 
+Chen & Williams (2023)    | PostgreSQL Relational DB    | Linked financial fraud losses directly to sus | Highly complex and expensive administration; 
+Gupta et al. (2020)       | Java CLI + SQLite           | Extremely fast execution on weak hardware; si | SQLite locks the whole database during writes
+Fernandez & Miller (2022) | Data Mining & 3NF SQL       | Clean 3NF relational normalization for statis | Purely analytical batch system; had no transa
+
+
+Alongside applied policing research, our work relies heavily on classic database systems and computer security literature. Bell and LaPadula's 1973 model provided the theoretical foundation for our four-tier classification and clearance hierarchy. The normalization methodology in Elmasri and Navathe's Database Systems (2015) guided our functional dependency breakdown into Boyce-Codd Normal Form. In addition, the transaction isolation, logging, and concurrency principles from Silberschatz et al. (2020) informed our stored procedure design, savepoint rollbacks, and trigger-based audit logging.

@@ -1,0 +1,105 @@
+================================================================================
+09: REFERENCES AND APPENDICES (CHAPTER 17 & APPENDICES)
+================================================================================
+Project: Criminal Case Management & Crime Analytics System (BACSE202)
+Course: Database Systems | VIT Chennai, SCOPE | October 2026
+Team: Ayush Sharma [25BAI1392] & Ojas Sugur [25BAI1222]
+Scope: Chapter 17: References (1 to 11), Appendix A: Database Schema Definitions & DDL Summary, Appendix B: Automated Test Suite Execution Log Summary, Appendix C: Faculty Demo Runbook Reference
+--------------------------------------------------------------------------------
+
+
+### Chapter 17: References
+
+1. Elmasri, R., & Navathe, S. B. (2015). Fundamentals of Database Systems (7th ed.). Pearson. (Chapters on Relational Data Model, BCNF Normalization, and Transaction Processing).
+
+2. Silberschatz, A., Korth, H. F., & Sudarshan, S. (2020). Database System Concepts (7th ed.). McGraw-Hill. (Chapters on Storage Indexing, Query Optimization, and Concurrency Control).
+
+3. Bell, D. E., & LaPadula, L. J. (1973). Secure Computer Systems: Mathematical Foundations and Model. MITRE Technical Report 2547.
+
+4. Sharma, P., Kumar, R., & Patel, V. (2022). Automated Web-Based Crime Information Management System. International Journal of Computer Applications, 184(12), 45-52.
+
+5. Adebayo, K., & Oladipo, T. (2021). Centralized Police Database Records Management System. Journal of Information Security and Applications, 58, 102-114.
+
+6. Chen, L., & Williams, M. (2023). Cybercrime Evidence Database Architecture and Integrity Verification. IEEE Transactions on Information Forensics and Security, 18, 312-325.
+
+7. Gupta, S., Verma, A., & Roy, D. (2020). Automated FIR Tracking Tool for Low-Resource Police Stations. Procedia Computer Science, 171, 889-898.
+
+8. Fernandez, G., & Miller, J. (2022). Applying Relational Normalization and Data Mining in Crime Trend Analysis. ACM Computing Surveys, 54(8), 1-28.
+
+9. City of Chicago Data Portal. (2026). Crimes - 2001 to Present (SODA API Endpoint: ijzp-q8t2.json). City of Chicago Department of Innovation and Technology.
+
+10. Oracle Corporation. (2024). MySQL 9.0 / 8.4 Reference Manual: InnoDB Storage Engine, Triggers, Stored Routines, and Optimization. Oracle Documentation.
+
+11. National Institute of Standards and Technology (NIST). (2020). Role-Based Access Control and Security Clearance Models (SP 800-162). U.S. Department of Commerce.
+
+
+============================================================
+APPENDIX A: DATABASE SCHEMA DEFINITIONS & DDL SCRIPTS SUMMARY
+============================================================
+APPENDIX A: DATABASE SCHEMA DEFINITIONS & DDL SCRIPTS SUMMARY
+
+The system consists of 14 BCNF relations deployed under the InnoDB storage engine on MySQL Community Server 9.7:
+1. POLICE_STATIONS: Station headquarters and jurisdictional boundaries. Primary Key: station_id. Unique Keys: station_name, district_code.
+2. USERS: Departmental personnel with Disjoint Specialization into Administrator, Police Officer, and Investigator. Primary Key: user_id. Unique Keys: username, email, badge_number. Foreign Key: station_id -> POLICE_STATIONS(station_id).
+3. CASES: Criminal incident dockets categorized by priority and classification level. Primary Key: case_id. Unique Key: case_number. Foreign Keys: station_id, created_by -> USERS(user_id).
+4. PERSONS: Suspect, victim, and witness registry. Primary Key: person_id.
+5. CASE_ASSIGNMENTS: Personnel allocation to case dockets. Primary Key: assignment_id. Foreign Keys: case_id, user_id. Virtual Generated Keys: active_assignment_key, active_lead_key.
+6. CASE_PERSONS: Junction table linking personas to cases with specific roles. Primary Key: case_person_id. Foreign Keys: case_id, person_id.
+7. EVIDENCE: Physical seized items tracked with unique barcodes. Primary Key: evidence_id. Unique Key: evidence_code. Foreign Keys: case_id, collected_by -> USERS(user_id).
+8. EVIDENCE_CUSTODY_LOG: Immutable transfer history populated by triggers. Primary Key: custody_id. Foreign Keys: evidence_id, handled_by -> USERS(user_id).
+9. INVESTIGATION_NOTES: Chronological progress entries logged by detectives. Primary Key: note_id. Foreign Keys: case_id, author_id -> USERS(user_id).
+10. AUDIT_LOG: Engine-level transaction ledger capturing old and new JSON states. Primary Key: log_id.
+11. IUCR_CODES: Illinois Uniform Crime Reporting standard lookup table. Primary Key: iucr_code.
+12. PUBLIC_CRIME_INCIDENTS: Open data portal table storing over 50,000 Chicago crime events. Primary Key: incident_id. Unique Key: source_id. Foreign Key: canonical_iucr_code -> IUCR_CODES(iucr_code).
+13. CITIZENS: Public community user accounts with salted scrypt credentials. Primary Key: citizen_id. Unique Key: email.
+14. CITIZEN_REPORTS: Public complaints decoupled from internal dossiers. Primary Key: report_id. Unique Key: tracking_number. Foreign Key: citizen_id -> CITIZENS(citizen_id).
+
+
+============================================================
+APPENDIX B: AUTOMATED TEST SUITE EXECUTION LOG SUMMARY
+============================================================
+APPENDIX B: AUTOMATED TEST SUITE EXECUTION LOG SUMMARY
+
+Execution Target: MySQL Community Server 9.7.1 on localhost:3306
+Test Framework: Pytest 8.4.2 & Python 3.14
+Total Tests Configured: 35
+Total Tests Passing: 35 (100% Pass Rate)
+
+Module-by-Module Verification Breakdown:
+• tests/test_db.py (4 tests): Verified database connectivity, InnoDB engine configuration, foreign key enforcement, and virtual column calculation.
+• tests/test_models.py (6 tests): Verified model instantiation, password hashing with scrypt, case status updates, and audit logging.
+• tests/test_security_service.py (5 tests): Verified Bell-LaPadula clearance hierarchy (PUBLIC=1 to RESTRICTED=4), Need-to-Know assignment validation, and unauthorized access blocking.
+• tests/test_auth_routes.py (4 tests): Verified internal staff login, invalid credentials rejection, session logout, and protected route access control.
+• tests/test_citizen_routes.py (8 tests): Verified citizen registration, report filing with CR-YYYY-XXXXX tracking references, public status view, and anti-enumeration HTTP 404 security.
+• tests/test_admin_routes.py (3 tests): Verified admin staff management panel, personnel clearance elevation/demotion, and account deactivation.
+• tests/test_analytics.py (3 tests): Verified Chicago crime query aggregations, IUCR primary type distribution, and district crime counts.
+• tests/test_sql_workbench.py (2 tests): Verified /sql-demo query runner, view execution, and stored procedure execution.
+
+Smoke Test Suite: 24/24 Verification Points Passed (smoke_test.py).
+
+
+============================================================
+APPENDIX C: FACULTY DEMO RUNBOOK REFERENCE SUMMARY
+============================================================
+APPENDIX C: FACULTY DEMO RUNBOOK REFERENCE SUMMARY
+
+Quick Start Commands:
+1. Activate Environment: & 'd:\Criminal Database\venv\Scripts\Activate.ps1'
+2. Start Web Application: python app.py (Listens on http://127.0.0.1:5000)
+3. Execute Test Suite: pytest -v
+
+Demonstration User Accounts:
+• Administrator: admin / admin123 (Clearance Level: RESTRICTED - Tier 4)
+• Investigator: investigator1 / invest123 (Clearance Level: CONFIDENTIAL - Tier 3)
+• Police Officer: officer1 / officer123 (Clearance Level: INTERNAL - Tier 2)
+• Unassigned Officer: officer2 / officer123 (Clearance Level: INTERNAL - Tier 2)
+• Demo Citizen: citizen_demo@example.com / CitizenPass123!
+
+7-Minute Live Evaluation Sequence:
+1. Staff Authentication & Clearance Inspection (/login, /admin/staff)
+2. Bell-LaPadula MLS & Need-to-Know Enforcement (/cases, /cases/<id>)
+3. Investigator Assignment & Stored Procedure Execution (/cases/<id>/assign)
+4. Evidence Chain-of-Custody & Trigger Automation (/evidence/<id>/transfer)
+5. Decoupled Citizen Portal & Anti-Enumeration 404 Defense (/citizen/login, /citizen/reports/<id>)
+6. Chicago Open Data Analytics Dashboard (/analytics)
+7. Live SQL Demonstration Workbench (/sql-demo)

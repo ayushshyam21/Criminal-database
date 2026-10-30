@@ -1,0 +1,95 @@
+================================================================================
+04: METHODOLOGY AND SYSTEM DESIGN (CHAPTER 4 & CHAPTER 5)
+================================================================================
+Project: Criminal Case Management & Crime Analytics System (BACSE202)
+Course: Database Systems | VIT Chennai, SCOPE | October 2026
+Team: Ayush Sharma [25BAI1392] & Ojas Sugur [25BAI1222]
+Scope: Chapter 4: System Requirements & User Roles (Table 4.1, FR-1 to FR-12), Chapter 5: System Design & Architecture (Three-Tier Architecture, Dual Accounts Table 5.1, Bell-LaPadula MLS Model)
+--------------------------------------------------------------------------------
+
+
+### Chapter 4: System Requirements & User Roles
+
+The system recognizes four operational user roles, each tied to distinct administrative duties and database access levels:
+
+Table 4.1. User roles, clearance tiers, demo credentials, and responsibilities
+
+User Role            | Demo Username / Email    | Assigned Clearance     | Operational Responsibilities                 
+---------------------+--------------------------+------------------------+----------------------------------------------
+System Administrator | admin_sys                | RESTRICTED (Level 4)   | Chief Eleanor Vance: Department-wide operatio
+Senior Detective     | investigator_chen        | CONFIDENTIAL (Level 3) | Detective Chen: Assigned lead investigations,
+Patrol Officer       | officer_carter           | INTERNAL (Level 2)     | Officer Carter: Initial case docket intake, w
+Public Citizen       | citizen.jane@example.com | PUBLIC (Level 1)       | Jane Doe: Separate public citizen registratio
+
+
+
+### Functional Requirements Specification
+
+• FR-1 (Authentication & Password Security): The system must authenticate users securely using salted scrypt password hashing (scrypt:32768:8:1) for both internal police staff and external citizens.
+
+• FR-2 (Multi-Level Security Hierarchy): The application must restrict case visibility according to four clearance ranks: PUBLIC (1), INTERNAL (2), CONFIDENTIAL (3), and RESTRICTED (4).
+
+• FR-3 (Need-to-Know Verification): The backend must deny unassigned officers access to CONFIDENTIAL and RESTRICTED dossiers, returning HTTP 403 Forbidden on direct URL attempts.
+
+• FR-4 (Admin Staff Governance): Administrators must be able to view all personnel via /admin/staff, update their clearance tiers, and enable or disable staff logins.
+
+• FR-5 (Case Dossier CRUD): Authorized officers must be able to create, view, update, and manage the full lifecycle of cases, recording locations, priorities, categories, and closure dates.
+
+• FR-6 (Automated Assignment Routine): The system must execute sp_assign_case to manage investigator assignments atomically, ensuring exactly one active Lead Investigator per case.
+
+• FR-7 (Evidence Custody Ledger): Physical evidence items must be tracked with unique codes, and every change in storage location or custody must trigger an automatic, tamper-evident log entry.
+
+• FR-8 (Investigation Diary Notes): Assigned officers must be able to log dated investigation notes, with a confidentiality toggle that hides sensitive observations from unauthorized users.
+
+• FR-9 (Chicago Open Crimes Analytics): The application must provide interactive charts and filters for over 50,000 public records imported from the City of Chicago open data portal.
+
+• FR-10 (Citizen Portal Intake): Citizens must be able to register separately, submit non-emergency incident reports, and receive a formatted tracking code (CR-YYYY-XXXXX).
+
+• FR-11 (Anti-Enumeration Privacy Defense): When a logged-in citizen attempts to access a report filed by someone else, the system must return HTTP 404 Not Found to prevent ID enumeration.
+
+• FR-12 (SQL Evaluation Workbench): The internal portal must provide an interactive /sql-demo screen where faculty evaluators can execute queries, test views, call stored procedures, and inspect query plans.
+
+
+### Chapter 5: System Design & Architecture
+
+Our web application uses a standard three-tier architecture that cleanly separates user presentation, application security logic, and physical database storage:
+
+Presentation Tier: Built using Bootstrap 5.3.3 and Chart.js 4.4.1 templates rendered by Flask's Jinja2 engine. Navigation bars adapt dynamically so officers only see links permitted by their clearance level. Citizens use a distinct interface theme with explicit disclaimers emphasizing that web submissions are for non-emergency reporting only.
+
+Application & Security Tier: Implemented in Python 3.14 using Flask 3.1.2. The security layer (security_service.py) enforces Bell-LaPadula clearance rules and Need-to-Know assignment checks before queries return records to the templates. Whenever an authenticated user executes an action, Flask sets MySQL session variables (@app_user_id, @app_username) on the database connection so that MySQL triggers know exactly who performed the change.
+
+Database Tier: Powered by MySQL Community Server 9.7 with the InnoDB storage engine. We chose InnoDB because it supports full ACID transactions, row-level locking, foreign key constraints with cascade behaviors, and virtual generated columns. Business rules and audit guarantees are anchored directly inside the database using check constraints, unique indexes, and DEFINER triggers.
+
+
+### Dual-Account Least-Privilege Architecture
+
+During development, we deliberately avoided connecting the Flask application with an all-powerful root or administrative MySQL user. Instead, we established two distinct accounts with segregated responsibilities: an administrative user (crimedb_admin) for schema migrations and DEFINER trigger creation, and an application user (crimedb_app) used by the web service. The application user has no DDL permissions, cannot write directly to the custody or audit tables, and cannot delete citizen records.
+
+Table 5.1. Database account privilege segregation and operational prohibitions
+
+Database Account    | Granted Database Privileges                   | Strict Prohibitions & Purpose                
+--------------------+-----------------------------------------------+----------------------------------------------
+crimedb_admin       | CREATE, ALTER, DROP, INDEX, TRIGGER, EXECUTE, | Used solely for schema execution, batch ETL i
+(Migration User)    |                                               |                                              
+crimedb_app         | SELECT, INSERT, UPDATE, DELETE on operational | Core application CRUD operations. Subject to 
+(Flask Runtime)     |                                               |                                              
+crimedb_app         | SELECT, INSERT, UPDATE on citizens and citize | PROHIBITED: Direct DELETE is explicitly denie
+(Citizen Domain)    |                                               |                                              
+crimedb_app         | SELECT ONLY on audit_log, evidence_custody_lo | PROHIBITED: Direct INSERT/UPDATE/DELETE is de
+(Audit & Open Data) |                                               |                                              
+
+
+
+### Bell-LaPadula Security Model & Discretionary Need-to-Know
+
+To stop officers from browsing sensitive files without authorization, we assigned integer ranks to our clearance levels: PUBLIC = 1, INTERNAL = 2, CONFIDENTIAL = 3, and RESTRICTED = 4. Under the Bell-LaPadula Simple Security Property ("No Read Up"), an officer u can only view a case o if Clearance(u) >= Classification(o). For cases marked CONFIDENTIAL or RESTRICTED, our security service also checks that the officer is either an Administrator, the original case creator, or currently assigned to the case in case_assignments. Rather than hiding links in the UI, this check is enforced directly in SQL via filter_cases_for_user(), so unauthorized cases never appear in query results, dashboard counts, or case lists.
+
+
+==================================================
+FIGURE 5.1 TRANSCRIPTION: MULTI-TIER ARCHITECTURE
+==================================================
+Architecture Flow Transcription:
+1. Client Tier: Internal Staff Portal (/login, /cases) and Decoupled Citizen Portal (/citizen/login, /citizen/reports).
+2. Presentation Tier: Flask Jinja2 Web Engine, Bootstrap 5.3.3 UI, Chart.js 4.4.1 Interactive Visualizations.
+3. Application & Security Tier: Python 3.14, Flask 3.1.2, security_service.py (Bell-LaPadula MLS, Need-to-Know), Session Context Injector (@app_user_id, @app_username).
+4. Storage Tier: MySQL Community Server 9.7 (InnoDB), Dual Accounts (crimedb_admin for DDL, crimedb_app for queries), DEFINER Triggers, Stored Procedures (sp_assign_case), Deterministic Functions (fn_case_duration), 14 BCNF Tables.

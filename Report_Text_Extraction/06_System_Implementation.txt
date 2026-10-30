@@ -1,0 +1,367 @@
+================================================================================
+06: SYSTEM IMPLEMENTATION (CHAPTER 9, CHAPTER 10, & CHAPTER 11)
+================================================================================
+Project: Criminal Case Management & Crime Analytics System (BACSE202)
+Course: Database Systems | VIT Chennai, SCOPE | October 2026
+Team: Ayush Sharma [25BAI1392] & Ojas Sugur [25BAI1222]
+Scope: Chapter 9: SQL Implementation & Query Catalog (DA2 & Production Queries), Chapter 10: Advanced Database Features (Stored Procedures, Functions, Triggers, Savepoints), Chapter 11: Cloud Deployment Architecture (Docker containerization, AWS/GCP topology)
+--------------------------------------------------------------------------------
+
+
+### Chapter 9: SQL Implementation & Query Catalog
+
+Our SQL implementation developed over two main stages: the initial relational queries, views, and joins created in Digital Assignment 2 (DA2) by Ayush Sharma (25BAI1392), followed by the expanded multi-table queries and analytical views written for the final 14-table system.
+
+9.1 DA2 Foundational SQL Catalog (6-Table Schema)
+
+During DA2, Ayush Sharma authored and tested foundational SQL queries against the initial 6-table schema (POLICE_STATION, CRIME, CRIMINAL, VICTIM, CRIMINALS_OF_CRIME, VICTIM_OF_CRIME) to verify joins, subqueries, and aggregate grouping:
+
+Relational Joins: 1. Multi-Table Joins (DA2):
+
+```sql
+-- Inner Join: Mapping crimes directly to handling police stations
+SELECT c.crime_id, c.crime_type, c.status, p.station_name
+FROM CRIME c
+INNER JOIN POLICE_STATION p ON c.station_id = p.station_id;
+
+-- Multi-Table Left Join: Connecting crimes to multiple suspects and their specific roles
+SELECT c.crime_type, cr.name AS criminal_name, coc.role_in_crime
+FROM CRIME c
+LEFT JOIN CRIMINALS_OF_CRIME coc ON c.crime_id = coc.crime_id
+LEFT JOIN CRIMINAL cr ON coc.criminal_id = cr.criminal_id;
+```
+
+Nested Selection: 2. Subqueries & Nested Queries (DA2):
+
+```sql
+-- Nested Query with Subquery IN clause: Finding victims who lost over $2,000 to fraud
+SELECT name, phone 
+FROM VICTIM 
+WHERE victim_id IN (
+    SELECT victim_id 
+    FROM VICTIM_OF_CRIME 
+    WHERE loss_amount > 2000.00
+);
+
+-- Scalar Subquery: Retrieving the station handling a specific Ransomware incident
+SELECT station_name 
+FROM POLICE_STATION 
+WHERE station_id = (
+    SELECT station_id 
+    FROM CRIME 
+    WHERE crime_type = 'Ransomware'
+);
+```
+
+Aggregations: 3. Aggregate Analysis (DA2):
+
+```sql
+-- Total incident count across the department
+SELECT COUNT(*) AS total_crimes FROM CRIME;
+
+-- Total and average financial losses across cyber victims
+SELECT SUM(loss_amount) AS total_financial_loss FROM VICTIM_OF_CRIME;
+SELECT AVG(loss_amount) AS average_loss FROM VICTIM_OF_CRIME;
+
+-- Grouped distribution by crime category
+SELECT crime_type, COUNT(*) AS incident_count 
+FROM CRIME 
+GROUP BY crime_type;
+```
+
+Relational View: 4. Foundational View (DA2: CyberCrimeSummary):
+
+```sql
+-- View encapsulating incident details and handling precinct
+CREATE VIEW CyberCrimeSummary AS
+SELECT c.crime_id, c.crime_type, c.status, p.station_name
+FROM CRIME c
+JOIN POLICE_STATION p ON c.station_id = p.station_id;
+
+SELECT * FROM CyberCrimeSummary;
+```
+
+9.2 Production 14-Table Query Evolution
+
+When scaling the system to the 14-table schema, we expanded these query patterns to incorporate multi-level clearance filtering, chain-of-custody tracking, and analytical views:
+
+```sql
+SELECT c.case_number, c.title, c.classification_level, ps.station_name,
+       p.first_name AS person_first, p.last_name AS person_last, cp.role_in_case,
+       e.evidence_code, e.current_storage_location
+FROM cases c
+INNER JOIN police_stations ps ON c.station_id = ps.station_id
+LEFT JOIN case_persons cp ON c.case_id = cp.case_id
+LEFT JOIN persons p ON cp.person_id = p.person_id
+LEFT JOIN evidence e ON c.case_id = e.case_id
+WHERE c.status = 'Under Investigation';
+```
+
+Analytical View: Enterprise Case Summary View (v_case_summary):
+
+```sql
+CREATE OR REPLACE VIEW v_case_summary AS
+SELECT 
+    c.case_id, c.case_number, c.title, c.case_type, c.status, c.priority, c.classification_level,
+    ps.station_name, ps.district_code, c.date_reported, c.date_closed,
+    DATEDIFF(COALESCE(c.date_closed, CURRENT_TIMESTAMP), c.date_reported) AS days_elapsed,
+    u_creator.full_name AS reported_by, u_lead.full_name AS lead_investigator,
+    COUNT(DISTINCT ca.user_id) AS assigned_officer_count,
+    COUNT(DISTINCT cp.person_id) AS total_persons_involved,
+    COUNT(DISTINCT e.evidence_id) AS evidence_count
+FROM cases c
+JOIN police_stations ps ON c.station_id = ps.station_id
+JOIN users u_creator ON c.created_by = u_creator.user_id
+LEFT JOIN case_assignments ca_lead ON c.case_id = ca_lead.case_id 
+    AND ca_lead.assignment_role = 'Lead Investigator' AND ca_lead.is_active = TRUE
+LEFT JOIN users u_lead ON ca_lead.user_id = u_lead.user_id
+LEFT JOIN case_assignments ca ON c.case_id = ca.case_id
+LEFT JOIN case_persons cp ON c.case_id = cp.case_id
+LEFT JOIN evidence e ON c.case_id = e.case_id
+GROUP BY c.case_id, c.case_number, c.title, c.case_type, c.status, c.priority,
+         c.classification_level, ps.station_name, ps.district_code, c.date_reported,
+         c.date_closed, u_creator.full_name, u_lead.full_name;
+```
+
+
+### Chapter 10: Advanced Database Features
+
+A central goal of our database project was placing critical business rules, access constraints, and audit logging directly inside the MySQL engine using stored procedures, deterministic functions, triggers, and virtual generated columns, rather than depending solely on web application code.
+
+10.1 DA2 Procedural Routines & Triggers
+
+DA2 Routine: 1. Stored Procedure: GetCrimesByStatus
+
+```sql
+DELIMITER $$
+CREATE PROCEDURE GetCrimesByStatus(IN crime_status VARCHAR(30))
+BEGIN
+    SELECT crime_id, crime_type, location, crime_date
+    FROM CRIME
+    WHERE status = crime_status;
+END $$
+DELIMITER ;
+
+CALL GetCrimesByStatus('Pending');
+```
+
+DA2 Function: 2. Stored Function: GetTotalLossForVictim
+
+```sql
+DELIMITER $$
+CREATE FUNCTION GetTotalLossForVictim(v_id INT) 
+RETURNS DECIMAL(12,2)
+DETERMINISTIC
+BEGIN
+    DECLARE total_loss DECIMAL(12,2);
+    SELECT SUM(loss_amount) INTO total_loss 
+    FROM VICTIM_OF_CRIME 
+    WHERE victim_id = v_id;
+    RETURN IFNULL(total_loss, 0.00);
+END $$
+DELIMITER ;
+
+SELECT name, GetTotalLossForVictim(victim_id) AS total_lost FROM VICTIM;
+```
+
+DA2 Trigger: 3. Data Validation Trigger: CheckLossAmount
+
+```sql
+DELIMITER $$
+CREATE TRIGGER CheckLossAmount
+BEFORE INSERT ON VICTIM_OF_CRIME
+FOR EACH ROW
+BEGIN
+    IF NEW.loss_amount < 0 THEN
+        SET NEW.loss_amount = 0.00;
+    END IF;
+END $$
+DELIMITER ;
+```
+
+DA2 Cursor Logic: 4. Cursor-Based Financial Reporting: ReportVictimLosses
+
+```sql
+DELIMITER $$
+CREATE PROCEDURE ReportVictimLosses()
+BEGIN
+    DECLARE done INT DEFAULT FALSE;
+    DECLARE v_name VARCHAR(100);
+    DECLARE v_loss DECIMAL(12,2);
+    DECLARE cur_loss CURSOR FOR 
+        SELECT v.name, IFNULL(SUM(voc.loss_amount), 0.00)
+        FROM VICTIM v
+        LEFT JOIN VICTIM_OF_CRIME voc ON v.victim_id = voc.victim_id
+        GROUP BY v.victim_id, v.name;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+
+    OPEN cur_loss;
+    read_loop: LOOP
+        FETCH cur_loss INTO v_name, v_loss;
+        IF done THEN
+            LEAVE read_loop;
+        END IF;
+    END LOOP;
+    CLOSE cur_loss;
+END $$
+DELIMITER ;
+```
+
+10.2 Production Stored Procedure: sp_assign_case
+
+For the full application, we developed sp_assign_case to handle investigator assignments inside an explicit ACID transaction. When assigning a new Lead Investigator, the procedure automatically deactivates any existing lead officer, creates the new assignment record, and advances the case status to "Under Investigation". If any step fails, the entire transaction rolls back to ensure data consistency.
+
+```sql
+DELIMITER $$
+CREATE PROCEDURE sp_assign_case(
+    IN p_case_id INT,
+    IN p_user_id INT,
+    IN p_assignment_role VARCHAR(50),
+    IN p_notes VARCHAR(255),
+    OUT p_status VARCHAR(50),
+    OUT p_message VARCHAR(255)
+)
+BEGIN
+    DECLARE v_case_status VARCHAR(30);
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SET p_status = 'ERROR';
+        SET p_message = 'Transaction failed. Rolled back.';
+    END;
+
+    START TRANSACTION;
+    SELECT status INTO v_case_status FROM cases WHERE case_id = p_case_id;
+
+    IF v_case_status = 'Closed' THEN
+        SET p_status = 'REJECTED';
+        SET p_message = 'Cannot assign officers to a Closed case.';
+        ROLLBACK;
+    ELSE
+        IF p_assignment_role = 'Lead Investigator' THEN
+            UPDATE case_assignments
+            SET is_active = FALSE, unassigned_date = CURRENT_TIMESTAMP
+            WHERE case_id = p_case_id AND assignment_role = 'Lead Investigator' AND is_active = TRUE;
+        END IF;
+
+        INSERT INTO case_assignments (case_id, user_id, assignment_role, notes, is_active)
+        VALUES (p_case_id, p_user_id, p_assignment_role, p_notes, TRUE);
+
+        IF v_case_status = 'Open' THEN
+            UPDATE cases SET status = 'Under Investigation' WHERE case_id = p_case_id;
+        END IF;
+
+        COMMIT;
+        SET p_status = 'SUCCESS';
+        SET p_message = 'Personnel assigned successfully.';
+    END IF;
+END$$
+DELIMITER ;
+```
+
+10.3 Production Stored Function: fn_case_duration
+
+We wrote fn_case_duration as a deterministic stored function to calculate the duration of a case in days. For open cases, it computes the time elapsed from the incident date to the current date; for closed cases, it calculates the exact span between reporting and final closure.
+
+```sql
+DELIMITER $$
+CREATE FUNCTION fn_case_duration(p_case_id INT)
+RETURNS INT
+READS SQL DATA
+DETERMINISTIC
+BEGIN
+    DECLARE v_days INT;
+    SELECT DATEDIFF(COALESCE(date_closed, CURRENT_TIMESTAMP), date_reported)
+    INTO v_days FROM cases WHERE case_id = p_case_id;
+    RETURN v_days;
+END$$
+DELIMITER ;
+```
+
+10.4 Production Triggers & Dynamic Actor Tracking
+
+Because MySQL triggers run within the database engine and cannot read Flask's session cookies directly, our application passes user identity down to MySQL using session variables (@app_user_id and @app_username) on each authenticated request. When an evidence item's location or custody status is modified, the trigger trg_evidence_custody_update automatically captures these session values and logs an immutable record in evidence_custody_log.
+
+```sql
+DELIMITER $$
+CREATE TRIGGER trg_evidence_custody_update
+AFTER UPDATE ON evidence
+FOR EACH ROW
+BEGIN
+    IF (OLD.current_storage_location <> NEW.current_storage_location) 
+       OR (OLD.current_custody_status <> NEW.current_custody_status) THEN
+        INSERT INTO evidence_custody_log (
+            evidence_id, previous_status, new_status, from_location, to_location,
+            handled_by, reason_for_transfer, logged_at
+        ) VALUES (
+            NEW.evidence_id, OLD.current_custody_status, NEW.current_custody_status,
+            OLD.current_storage_location, NEW.current_storage_location,
+            @app_user_id, 'Custody updated via management console', CURRENT_TIMESTAMP
+        );
+    END IF;
+END$$
+DELIMITER ;
+```
+
+10.5 Declarative Virtual Generated Columns
+
+To enforce business constraints without running into concurrency race conditions, we used virtual generated columns with unique indexes. This prevents duplicate active assignments while still allowing complete historical records of past assignments to remain in the same table.
+
+```sql
+ALTER TABLE case_assignments
+ADD COLUMN active_assignment_key VARCHAR(64) GENERATED ALWAYS AS (
+    CASE WHEN is_active = TRUE THEN CONCAT(case_id, '-', user_id) ELSE NULL END
+) VIRTUAL,
+ADD UNIQUE KEY uq_active_assignment (active_assignment_key);
+
+ALTER TABLE case_assignments
+ADD COLUMN active_lead_key VARCHAR(64) GENERATED ALWAYS AS (
+    CASE WHEN is_active = TRUE AND assignment_role = 'Lead Investigator' 
+         THEN CONCAT(case_id, '-LEAD') ELSE NULL END
+) VIRTUAL,
+ADD UNIQUE KEY uq_active_lead (active_lead_key);
+```
+
+10.6 Transaction Management & Savepoints (DA2 Verification)
+
+Testing transaction savepoint rollbacks during multi-step database operations:
+
+```sql
+START TRANSACTION;
+INSERT INTO persons (first_name, last_name, gender, is_fictional) VALUES ('Test', 'Suspect', 'Male', TRUE);
+SAVEPOINT sp1;
+INSERT INTO cases (case_number, station_id, title, case_type, priority, created_by, is_fictional)
+VALUES ('TEMP-2026-0001', 1, 'Erroneous Case', 'Theft', 'Low', 1, TRUE);
+ROLLBACK TO sp1;
+COMMIT;
+```
+
+
+### Chapter 11: Cloud Deployment Architecture
+
+Although our academic project runs and is tested locally using Python 3.14 and MySQL Community Server 9.7.1, we designed the architecture so it can be deployed to cloud environments such as AWS or Google Cloud. The Flask application is stateless, with container dependencies defined in a multi-stage Dockerfile:
+
+```sql
+FROM python:3.12-slim-bookworm
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends default-mysql-client ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+RUN useradd -m crimedb_user && chown -R crimedb_user:crimedb_user /app
+USER crimedb_user
+EXPOSE 5000
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "60", "run:app"]
+```
+
+In a cloud setup, incoming web traffic would enter through an Application Load Balancer with SSL termination. Flask container instances would run in private application subnets and scale horizontally behind the load balancer. The MySQL database would run on a managed database service (such as AWS RDS or GCP Cloud SQL) placed inside dedicated database subnets with no public internet access. Rather than hardcoding database passwords, secrets would be injected into container environment variables at runtime using a secrets manager.
+
+
+==================================================
+FIGURE 11.1 TRANSCRIPTION: CLOUD TOPOLOGY
+==================================================
+Cloud Infrastructure Topology Transcription:
+• Public Ingress: AWS Route 53 DNS -> Internet Gateway -> Application Load Balancer (ALB) with SSL/TLS Termination.
+• Private App Subnet: Flask Container Pods running within an Auto-Scaling Group in a Private VPC Subnet.
+• Security & Secrets: AWS Secrets Manager / HashiCorp Vault injecting database credentials into environment variables at boot time.
+• Private Database Subnet: Managed MySQL Instance (AWS RDS Multi-AZ) with automated automated replication and zero public ingress.

@@ -1,0 +1,73 @@
+================================================================================
+07: TESTING AND RESULTS (CHAPTER 12, CHAPTER 13, & CHAPTER 14)
+================================================================================
+Project: Criminal Case Management & Crime Analytics System (BACSE202)
+Course: Database Systems | VIT Chennai, SCOPE | October 2026
+Team: Ayush Sharma [25BAI1392] & Ojas Sugur [25BAI1222]
+Scope: Chapter 12: Testing & Quality Assurance (Table 12.1 Pytest Execution Matrix, Least-Privilege Error 1142), Chapter 13: Performance Analysis & Index Optimization (Table 13.1 Composite Indexes, EXPLAIN Benchmarks Table 13.2), Chapter 14: Results & Discussion
+--------------------------------------------------------------------------------
+
+
+### Chapter 12: Testing & Quality Assurance
+
+To ensure that our database constraints, access control rules, and application endpoints work properly, we built an automated test suite containing 35 Pytest integration tests, along with an end-to-end smoke test script (smoke_test.py). All 35 tests pass with a 100% success rate on our live MySQL 9.7 instance:
+
+Table 12.1. Automated test suite execution matrix (35/35 passing)
+
+Test Module                     | Test Function                                 | Verified Functionality                        | Status & Result       
+--------------------------------+-----------------------------------------------+-----------------------------------------------+-----------------------
+test_auth.py                    | test_valid_admin_login                        | Verifies authentication lifecycle, session co | PASSED (200 OK)       
+                                | test_invalid_password                         |                                               |                       
+test_cases_crud.py              | test_create_and_read_case                     | Validates case creation, input sanitization,  | PASSED (200 OK)       
+                                | test_list_cases_filter                        |                                               |                       
+test_citizen_portal.py          | test_citizen_registration_and_login           | Ensures citizens register with salted scrypt  | PASSED (200 OK)       
+test_citizen_portal.py          | test_cross_citizen_privacy_isolation          | Crucial Privacy Test: Probing another citizen | PASSED (404 OK)       
+test_classification_security.py | test_admin_restricted_case_access             | Chief Vance (RESTRICTED clearance) successful | PASSED (200 OK)       
+test_classification_security.py | test_unassigned_investigator_denied_need_to_k | Need-to-Know Test: Detective Hayes (CONFIDENT | PASSED (403 Forbidden)
+test_classification_security.py | test_officer_cannot_access_confidential_case  | Bell-LaPadula Test: Officer Carter (INTERNAL  | PASSED (403 Forbidden)
+test_classification_security.py | test_dashboard_query_isolation                | Verifies that RESTRICTED cases are completely | PASSED (Pruned)       
+test_stored_routines.py         | test_stored_procedure_assignment              | Executes sp_assign_case; confirms case status | PASSED (DB Verified)  
+
+
+We also verified our least-privilege security model using a connection verification script (scripts/test_db_connection.py). The test confirms that when the web application user crimedb_app attempts to execute DROP TABLE, insert directly into audit_log, or update public_crime_incidents, MySQL rejects the query with Error 1142 ("command denied"), verifying that database permissions are strictly enforced.
+
+
+### Chapter 13: Performance Analysis & Index Optimization
+
+After importing over 50,000 public crime incidents from the City of Chicago portal, queries filtering by district or date range suffered from noticeable latency because MySQL had to perform full table scans. To resolve this, we created 12 composite B-tree secondary indexes tailored to our most frequent search queries:
+
+Table 13.1. Composite B-tree secondary index formulation and target query paths
+
+Table Name             | Index Name & Columns              | Optimization Objective                       
+-----------------------+-----------------------------------+----------------------------------------------
+cases                  | idx_cases_station_status          | Accelerates precinct caseload filtering on op
+                       | (station_id, status)              |                                              
+cases                  | idx_cases_date_reported           | Speeds up chronological case triage and date-
+                       | (date_reported)                   |                                              
+case_assignments       | idx_assignments_case_active       | Optimizes lookups for active personnel on any
+                       | (case_id, is_active)              |                                              
+evidence               | idx_evidence_case_status          | Eliminates full scans when inventorying evide
+                       | (case_id, current_custody_status) |                                              
+public_crime_incidents | idx_pci_district                  | Drastically reduces row inspection when query
+                       | (district, incident_date)         |                                              
+citizen_reports        | idx_citizen_reports_citizen       | Provides sub-millisecond retrieval of user re
+                       | (citizen_id)                      |                                              
+
+
+
+### EXPLAIN Benchmark Results
+
+We evaluated our indexing decisions by analyzing query execution plans with MySQL EXPLAIN before and after adding the indexes. Filtering public_crime_incidents by district ("001") and date range without an index forced MySQL into a full table scan (type: ALL) that checked all ~50,000 rows. With our composite index idx_pci_district enabled, the access type changed to range/ref and the examined rows dropped to fewer than 500. This resulted in an over 95% reduction in scanned rows, reducing query execution time from roughly 160ms down to under 5ms.
+
+
+### Chapter 14: Results & Discussion
+
+Designing, implementing, and testing our system provided several practical insights into database development and application security:
+
+14.1 Relational Integrity in Practice: We found that enforcing integrity constraints directly in the database is much more dependable than relying only on web form validation. For example, our check constraint chk_cases_closure_consistency prevented cases from being marked "Closed" without a closing date, while virtual generated keys reliably blocked duplicate active assignments even during concurrent requests.
+
+14.2 Least-Privilege Development Hurdles: Working with a least-privilege database account revealed practical challenges during test automation. In our citizen test suite, our cleanup code initially attempted to delete test accounts using crimedb_app, which immediately failed with MySQL Error 1142 because DELETE permissions were intentionally revoked. We solved this by generating unique UUID emails for test records instead of trying to delete them, which also served as proof that our database permissions were working properly.
+
+14.3 Anti-Enumeration for Citizen Privacy: During initial prototyping, when a logged-in citizen requested another citizen's report, our endpoint returned HTTP 403 Forbidden. Although this blocked unauthorized access, it inadvertently confirmed that the requested report ID existed. We changed the response to HTTP 404 Not Found, eliminating the information leak and protecting citizens from automated tracking ID probing.
+
+14.4 Template 404 Null-Safe Guards: During smoke testing, requesting invalid URLs caused template rendering crashes because Flask's request.endpoint was None on 404 pages. We fixed this by adding null checks ({% if request.endpoint and 'cases' in request.endpoint %}) across base.html, allowing custom error pages to display cleanly without triggering an unhandled 500 server error.

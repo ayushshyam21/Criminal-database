@@ -1,0 +1,361 @@
+================================================================================
+05: DATABASE DESIGN (CHAPTER 6, CHAPTER 7, & CHAPTER 8)
+================================================================================
+Project: Criminal Case Management & Crime Analytics System (BACSE202)
+Course: Database Systems | VIT Chennai, SCOPE | October 2026
+Team: Ayush Sharma [25BAI1392] & Ojas Sugur [25BAI1222]
+Scope: Chapter 6: Database Design, ER & EER Modeling, Chapter 7: Relational Schema & Data Dictionary (Table 7.1), Chapter 8: Functional Dependencies & Normalization Proofs
+--------------------------------------------------------------------------------
+
+
+### Chapter 6: Database Design, ER & EER Modeling
+
+Our database design changed substantially as the project matured. In DA1, Ojas Sugur proposed a preliminary 6-table concept (POLICE_STATION, CRIME, CRIMINAL, VICTIM, and bridge tables CRIMINALS_OF_CRIME and VICTIM_OF_CRIME). That initial design helped us model many-to-many relationships between suspects, victims, and offenses. However, when we started developing the web application, we realized that an operational police system must track internal station personnel, custody transfers, investigation notes, and public citizen submissions in distinct tables. This led us to develop our final 14-table BCNF schema.
+
+
+### Enhanced Entity-Relationship (EER) Specialization
+
+In the Enhanced Entity-Relationship (EER) model, police personnel exhibit Disjoint Total Specialization (d, t). All department members share foundational attributes like username, email, password hash, and active status, but they specialize into three mutually exclusive operational roles: Administrator, Police Officer, and Investigator. Rather than creating three separate child tables with identical columns, we used a Single Table with Type Discriminator pattern in users using MySQL ENUMs. This avoids unnecessary outer joins while preserving complete relational integrity.
+
+
+[EMBEDDED DIAGRAM / IMAGE]
+Figure 6.1: Enhanced Entity-Relationship (EER) Model showing Disjoint Specialization & Domain Isolation.
+
+
+### Complete Entity-Relationship Diagram (ERD)
+
+The complete entity-relationship model spans 14 tables organized across four functional areas: the Police Operations Domain (police_stations, users, cases, persons, case_assignments, case_persons, evidence, investigation_notes), the Immutable Audit Domain (evidence_custody_log, audit_log), the Public Open Data Domain (iucr_codes, public_crime_incidents), and the Citizen Engagement Domain (citizens, citizen_reports). Foreign keys connect these tables to ensure that incidents, personnel, and evidence stay properly synchronized.
+
+
+[EMBEDDED DIAGRAM / IMAGE]
+Figure 6.2: Complete 14-Table Relational Entity-Relationship Diagram (ERD).
+
+
+### Chapter 7: Relational Schema & Data Dictionary
+
+The formal relational schema for our 14 tables is detailed below. Primary keys are marked with [PK], alternate candidate keys with [CK], and foreign keys reference their respective parent tables:
+
+1. POLICE_STATIONS (station_id [PK], station_name [CK], district_code [CK], address, phone, created_at)
+
+2. USERS (user_id [PK], station_id -> POLICE_STATIONS, username [CK], email [CK], password_hash, role, clearance_level, full_name, badge_number [CK], is_active, created_at, updated_at)
+
+3. CASES (case_id [PK], case_number [CK], station_id -> POLICE_STATIONS, title, description, case_type, status, priority, classification_level, incident_location, date_reported, date_closed, created_by -> USERS, is_fictional, created_at, updated_at)
+
+4. PERSONS (person_id [PK], first_name, last_name, date_of_birth, gender, phone_contact, address_line, is_fictional, created_at)
+
+5. CASE_ASSIGNMENTS (assignment_id [PK], case_id -> CASES, user_id -> USERS, assignment_role, assigned_date, unassigned_date, is_active, notes, active_assignment_key [CK], active_lead_key [CK])
+
+6. CASE_PERSONS (case_person_id [PK], case_id -> CASES, person_id -> PERSONS, role_in_case, statement_summary, added_at)
+
+7. EVIDENCE (evidence_id [PK], case_id -> CASES, evidence_code [CK], evidence_type, description, current_storage_location, current_custody_status, collected_date, collected_by -> USERS, created_at)
+
+8. EVIDENCE_CUSTODY_LOG (custody_id [PK], evidence_id -> EVIDENCE, previous_status, new_status, from_location, to_location, handled_by -> USERS, reason_for_transfer, logged_at)
+
+9. INVESTIGATION_NOTES (note_id [PK], case_id -> CASES, author_id -> USERS, note_title, note_body, is_confidential, logged_at)
+
+10. AUDIT_LOG (log_id [PK], table_name, record_id, operation_type, old_values, new_values, performed_by, timestamp)
+
+11. IUCR_CODES (iucr_code [PK], primary_type, description, fbi_code, is_active)
+
+12. PUBLIC_CRIME_INCIDENTS (incident_id [PK], source_id [CK], case_number, incident_date, block, source_iucr_code, source_primary_type, source_description, canonical_iucr_code -> IUCR_CODES, location_description, arrest_made, domestic, beat, district, ward, community_area, fbi_code, latitude, longitude, incident_year, updated_on, imported_at)
+
+13. CITIZENS (citizen_id [PK], email [CK], password_hash, full_name, phone_number, address, is_active, created_at, updated_at)
+
+14. CITIZEN_REPORTS (report_id [PK], tracking_number [CK], citizen_id -> CITIZENS, category, incident_date, incident_location, title, description, status, public_status_notes, is_demo_submission, created_at, updated_at)
+
+
+### Comprehensive Data Dictionary Catalog
+
+Table 7.1. Comprehensive Data Dictionary across all 14 BCNF tables
+
+Table Name             | Primary & Candidate Keys                   | Foreign Keys & Relationships                 | Key Constraints & Engine Role                
+-----------------------+--------------------------------------------+----------------------------------------------+----------------------------------------------
+police_stations        | PK: station_id                             | None (Parent table)                          | Holds jurisdictional precinct stations; distr
+                       | UK: station_name, district_code            |                                              |                                              
+users                  | PK: user_id                                | station_id -> police_stations (SET NULL)     | Stores police personnel; role ENUM('Admin','O
+                       | UK: username, email, badge_number          |                                              |                                              
+cases                  | PK: case_id                                | station_id -> police_stations (RESTRICT)     | Active case dossiers; classification_level EN
+                       | UK: case_number                            | created_by -> users (RESTRICT)               |                                              
+persons                | PK: person_id                              | None                                         | Fictional suspect/victim/witness personas; CH
+case_assignments       | PK: assignment_id                          | case_id -> cases (CASCADE)                   | Personnel allocations; virtual keys enforce a
+                       | UK: active_assignment_key, active_lead_key | user_id -> users (RESTRICT)                  |                                              
+case_persons           | PK: case_person_id                         | case_id -> cases (CASCADE)                   | M:N junction linking personas to cases with r
+                       | UK: (case_id, person_id, role_in_case)     | person_id -> persons (RESTRICT)              |                                              
+evidence               | PK: evidence_id                            | case_id -> cases (CASCADE)                   | Forensic evidence items; current_storage_loca
+                       | UK: evidence_code                          | collected_by -> users (SET NULL)             |                                              
+evidence_custody_log   | PK: custody_id                             | evidence_id -> evidence (CASCADE)            | Immutable custody transfer history written ex
+                       |                                            | handled_by -> users (SET NULL)               |                                              
+investigation_notes    | PK: note_id                                | case_id -> cases (CASCADE)                   | Case progress notes; is_confidential flag res
+                       |                                            | author_id -> users (RESTRICT)                |                                              
+audit_log              | PK: log_id                                 | None                                         | Tamper-proof system audit log; captures old/n
+iucr_codes             | PK: iucr_code                              | None                                         | Illinois Uniform Crime Reporting 4-digit stan
+public_crime_incidents | PK: incident_id                            | canonical_iucr_code -> iucr_codes (SET NULL) | High-volume City of Chicago open dataset (50,
+                       | UK: source_id                              |                                              |                                              
+citizens               | PK: citizen_id                             | None                                         | Decoupled public citizen accounts; salted scr
+                       | UK: email                                  |                                              |                                              
+citizen_reports        | PK: report_id                              | citizen_id -> citizens (CASCADE)             | Citizen demo incident filings; tracking_numbe
+                       | UK: tracking_number                        |                                              |                                              
+
+
+
+### Chapter 8: Functional Dependencies & Normalization Proofs
+
+A relational schema R is in Boyce-Codd Normal Form (BCNF) if and only if, for every non-trivial functional dependency X -> Y, the determinant X is a superkey of R. When developing our schema across DA1 and DA2, we systematically eliminated normalization anomalies: moving from unnormalized data to 1NF by ensuring atomic attributes; reaching 2NF by removing partial key dependencies; reaching 3NF by removing transitive dependencies; and finally verifying that every table satisfies BCNF.
+
+Proof for USERS: The candidate keys for this table are {user_id}, {username}, {email}, and {badge_number}. Because every functional dependency in this relation has one of these candidate keys as its determinant, the relation satisfies BCNF.
+
+Proof for CASES: The candidate keys are {case_id} and {case_number}. Every case attribute—such as title, category, priority, and classification level—is uniquely determined by these keys. Since both determinants are superkeys, the table satisfies BCNF.
+
+Proof for CASE_ASSIGNMENTS & Virtual Constraints: In many police database designs, ensuring that an officer is assigned only once to an active case requires extra application-level validation checks. In our project, we solved this directly inside MySQL using virtual generated columns. The column active_assignment_key is defined as CASE WHEN is_active=TRUE THEN CONCAT(case_id, '-', user_id) ELSE NULL END. By defining a UNIQUE index on active_assignment_key, MySQL allows multiple historical rows (where is_active is false and the key is null) but strictly prohibits duplicate active assignments. The functional dependency {active_assignment_key} -> {assignment_id, assignment_role, notes} holds for all active rows, keeping the table in BCNF without relying on error-prone application code.
+
+
+==================================================
+FIGURE 6.1 TRANSCRIPTION: EER SPECIALIZATION DIAGRAM
+==================================================
+flowchart TD
+    subgraph EERD_Diagram["Enhanced Entity-Relationship Diagram (EERD)"]
+        direction TB
+
+        subgraph UserSpecialization["Disjoint Total Specialization: System Personnel"]
+            USERS["USERS (Supertype Entity)\n────────────────────────\nuser_id (PK)\nusername (UK)\nemail (UK)\npassword_hash\nbadge_number (UK)\nstation_id (FK)\nis_active"]
+            
+            DISJ{"d, t\nDisjoint, Total"}
+
+            ADMIN["ADMINISTRATOR (Subtype)\n────────────────────────\n• System Configuration\n• Personnel Credential Mgmt\n• System-Wide Audit Log Review\n• Public Data Batch Importer"]
+            
+            OFFICER["POLICE OFFICER (Subtype)\n────────────────────────\n• Case Dossier Initial Intake\n• Persona Registry Management\n• Evidence Cataloging & Tagging\n• Assisting Operational Support"]
+            
+            INVESTIGATOR["INVESTIGATOR (Subtype)\n────────────────────────\n• Lead Case Investigation\n• Investigation Diary Notes\n• Evidence Custody Processing\n• Case Closure Recommendation"]
+
+            USERS --> DISJ
+            DISJ -->|role = 'Admin'| ADMIN
+            DISJ -->|role = 'Officer'| OFFICER
+            DISJ -->|role = 'Investigator'| INVESTIGATOR
+        end
+
+        subgraph RelationalMapping["Relational Schema Realization"]
+            MAP_NOTE["Mapping Strategy: Single Table with Type Discriminator\nTable: users (role ENUM('Admin', 'Officer', 'Investigator') NOT NULL)\nJustification: Identical base attributes across operational roles;\neliminates polymorphic multi-table outer joins while enforcing completeness."]
+        end
+
+        subgraph DomainSeparation["Architectural Domain Partitioning"]
+            APP_DOMAIN["APPLICATION DOSSIER DOMAIN\n(Internal Police Records)\n────────────────────────\n• cases (is_fictional = TRUE)\n• persons (is_fictional = TRUE)\n• case_assignments\n• case_persons\n• evidence & evidence_custody_log\n• investigation_notes"]
+
+            PUB_DOMAIN["PUBLIC CRIME INCIDENT DOMAIN\n(City of Chicago Open Data)\n────────────────────────\n• public_crime_incidents (read-only)\n• iucr_codes (lookup standards)\n• source_id (unique ingestion key)\n• Zero Linkage to Fictional Personas"]
+
+            ISOLATION_BARRIER{{"Strict Architectural & Relational Isolation Barrier\n(Zero Cross-Domain Foreign Keys)"}}
+
+            APP_DOMAIN -.-> ISOLATION_BARRIER
+            PUB_DOMAIN -.-> ISOLATION_BARRIER
+        end
+    end
+
+
+
+==================================================
+FIGURE 6.2 TRANSCRIPTION: COMPLETE 14-TABLE ERD
+==================================================
+erDiagram
+    POLICE_STATIONS ||--o{ USERS : "employs (0..N)"
+    POLICE_STATIONS ||--|{ CASES : "jurisdiction for (1..N)"
+    
+    USERS ||--o{ CASES : "registers (0..N)"
+    USERS ||--o{ CASE_ASSIGNMENTS : "assigned to (0..N)"
+    USERS ||--o{ EVIDENCE : "collected by (0..N)"
+    USERS ||--o{ EVIDENCE_CUSTODY_LOG : "custody handled by (0..N)"
+    USERS ||--o{ INVESTIGATION_NOTES : "authors (0..N)"
+
+    CASES ||--o{ CASE_ASSIGNMENTS : "allocates (0..N)"
+    CASES ||--o{ CASE_PERSONS : "involves (0..N)"
+    CASES ||--o{ EVIDENCE : "contains (0..N)"
+    CASES ||--o{ INVESTIGATION_NOTES : "documents (0..N)"
+
+    PERSONS ||--o{ CASE_PERSONS : "linked to (0..N)"
+    EVIDENCE ||--o{ EVIDENCE_CUSTODY_LOG : "tracked by (0..N)"
+    IUCR_CODES ||--o{ PUBLIC_CRIME_INCIDENTS : "categorizes (0..N)"
+    CITIZENS ||--o{ CITIZEN_REPORTS : "submits (0..N)"
+
+    POLICE_STATIONS {
+        int station_id PK
+        varchar station_name UK
+        varchar district_code UK
+        varchar address
+        varchar phone
+        datetime created_at
+    }
+
+    USERS {
+        int user_id PK
+        int station_id FK
+        varchar username UK
+        varchar email UK
+        varchar password_hash
+        enum role
+        enum clearance_level
+        varchar full_name
+        varchar badge_number UK
+        boolean is_active
+        datetime created_at
+        datetime updated_at
+    }
+
+    CASES {
+        int case_id PK
+        varchar case_number UK
+        int station_id FK
+        varchar title
+        text description
+        enum case_type
+        enum status
+        enum priority
+        enum classification_level
+        varchar incident_location
+        datetime date_reported
+        datetime date_closed
+        int created_by FK
+        boolean is_fictional
+        datetime created_at
+        datetime updated_at
+    }
+
+    PERSONS {
+        int person_id PK
+        varchar first_name
+        varchar last_name
+        date date_of_birth
+        enum gender
+        varchar phone_contact
+        varchar address_line
+        boolean is_fictional
+        datetime created_at
+    }
+
+    CASE_ASSIGNMENTS {
+        int assignment_id PK
+        int case_id FK
+        int user_id FK
+        enum assignment_role
+        datetime assigned_date
+        datetime unassigned_date
+        boolean is_active
+        varchar notes
+        varchar active_assignment_key UK
+        varchar active_lead_key UK
+    }
+
+    CASE_PERSONS {
+        int case_person_id PK
+        int case_id FK
+        int person_id FK
+        enum role_in_case
+        text statement_summary
+        datetime added_at
+    }
+
+    EVIDENCE {
+        int evidence_id PK
+        int case_id FK
+        varchar evidence_code UK
+        enum evidence_type
+        text description
+        varchar current_storage_location
+        enum current_custody_status
+        datetime collected_date
+        int collected_by FK
+        datetime created_at
+    }
+
+    EVIDENCE_CUSTODY_LOG {
+        int custody_id PK
+        int evidence_id FK
+        enum previous_status
+        enum new_status
+        varchar from_location
+        varchar to_location
+        int handled_by FK
+        varchar reason_for_transfer
+        datetime logged_at
+    }
+
+    INVESTIGATION_NOTES {
+        int note_id PK
+        int case_id FK
+        int author_id FK
+        varchar note_title
+        text note_body
+        boolean is_confidential
+        datetime logged_at
+    }
+
+    IUCR_CODES {
+        varchar iucr_code PK
+        varchar primary_type
+        varchar description
+        varchar fbi_code
+        boolean is_active
+    }
+
+    PUBLIC_CRIME_INCIDENTS {
+        int incident_id PK
+        bigint source_id UK
+        varchar case_number
+        datetime incident_date
+        varchar block
+        varchar source_iucr_code
+        varchar source_primary_type
+        varchar source_description
+        varchar canonical_iucr_code FK
+        varchar location_description
+        boolean arrest_made
+        boolean domestic
+        varchar beat
+        varchar district
+        int ward
+        varchar community_area
+        varchar fbi_code
+        decimal latitude
+        decimal longitude
+        int incident_year
+        datetime updated_on
+        datetime imported_at
+    }
+
+    AUDIT_LOG {
+        int log_id PK
+        varchar table_name
+        int record_id
+        enum operation_type
+        json old_values
+        json new_values
+        varchar performed_by
+        datetime timestamp
+    }
+
+    CITIZENS {
+        int citizen_id PK
+        varchar email UK
+        varchar password_hash
+        varchar full_name
+        varchar phone_number
+        varchar address
+        boolean is_active
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    CITIZEN_REPORTS {
+        int report_id PK
+        varchar tracking_number UK
+        int citizen_id FK
+        varchar category
+        date incident_date
+        varchar incident_location
+        varchar title
+        text description
+        enum status
+        text public_status_notes
+        boolean is_demo_submission
+        timestamp created_at
+        timestamp updated_at
+    }
+
+

@@ -1,0 +1,44 @@
+================================================================================
+02: INTRODUCTION (CHAPTER 1 & CHAPTER 2)
+================================================================================
+Project: Criminal Case Management & Crime Analytics System (BACSE202)
+Course: Database Systems | VIT Chennai, SCOPE | October 2026
+Team: Ayush Sharma [25BAI1392] & Ojas Sugur [25BAI1222]
+Scope: Chapter 1: Problem Statement, Chapter 2: Project Objectives & Scope
+--------------------------------------------------------------------------------
+
+
+### Chapter 1: Problem Statement
+
+When handling criminal complaints, police stations must process a wide variety of incidents, from everyday theft and burglary to complex financial fraud, cyber-enabled phishing, and identity theft. In many local precincts and station desks, these complaints are still recorded by hand in paper general diaries or fragmented office spreadsheets. During our initial problem study in Digital Assignment 1 (DA1), we observed several recurring issues that undermine both data reliability and investigative speed in these traditional setups:
+
+1.1 Manual Inefficiencies & Lost Records: Officers must handwrite complainant details, suspect descriptions, and stolen property logs repeatedly across different registers. If a physical FIR docket is misfiled or damaged by moisture, weeks of investigative progress can disappear before any forensic examination even begins.
+
+1.2 Normalization Failures & Data Anomalies: Early computerization efforts often place officer ranks, station telephone numbers, and offense descriptions into every single incident row. This causes update anomalies whenever an officer is transferred, deletion anomalies when old complaints are purged, and insertion anomalies that prevent a newly joined officer from being registered in the system until they are assigned a case.
+
+1.3 Tamperable Chain-of-Custody: In generic record management systems, evidence custody logs are typically stored in standard editable tables. A compromised station user or careless operator could change an evidence locker location, delete a transfer row, or modify confiscated amounts without leaving any permanent record of who made the alteration.
+
+1.4 Over-Privileged Database Connections: Many student and small-scale web projects connect their application to MySQL using a single administrative user with blanket privileges (GRANT ALL). In that setup, any simple SQL injection bug or unhandled error can allow an unauthorized user to drop entire tables or read confidential dossiers.
+
+1.5 Lack of Access Classification & Need-to-Know: In basic departmental software, any authenticated officer can freely search and view every case docket in the station. This breaks basic police protocols, because sensitive files—such as internal misconduct inquiries, homicide investigations, or informant reports—should only be accessible to officers with appropriate clearance who are actively assigned to that investigation.
+
+1.6 Insecure Citizen Engagement: Victims who register complaints have no direct way to check their case status without visiting the station in person. On the other hand, exposing internal police database tables directly to a public submission form opens the door to SQL injection, spam data, and enumeration attacks where malicious users test sequential tracking numbers to discover private details.
+
+
+### Chapter 2: Project Objectives & Scope
+
+To address these operational bottlenecks systematically, our team established seven concrete engineering objectives that shaped our database modeling and application architecture:
+
+2.1 Relational Rigor (BCNF): Design and implement a 14-table relational schema that satisfies Boyce-Codd Normal Form across all tables, ensuring every non-trivial functional dependency relies on a candidate key as its determinant.
+
+2.2 Security Clearance Hierarchy: Implement four hierarchical security clearance and classification levels (PUBLIC < INTERNAL < CONFIDENTIAL < RESTRICTED) based on the Bell-LaPadula Simple Security Property ("No Read Up"), paired with active assignment checks for operational Need-to-Know access.
+
+2.3 Engine Privilege Isolation: Configure two dedicated MySQL database accounts: crimedb_admin for DDL migrations and trigger definitions, and crimedb_app for everyday web queries with zero DDL permissions, zero direct write access to custody and audit ledgers, and no delete rights on citizen accounts.
+
+2.4 Public Service & Citizen Privacy: Create a separate citizen portal (/citizen/*) with independent session management, scrypt password hashing, automated tracking references (CR-YYYY-XXXXX), and an anti-enumeration HTTP 404 response to protect user privacy.
+
+2.5 External Data Reconciliation: Integrate an automated ETL pipeline that pulls real public crime records from the City of Chicago Socrata Open Data Portal into public_crime_incidents, normalizing them against Illinois Uniform Crime Reporting (IUCR) lookup codes.
+
+2.6 Server-Side Database Routines: Implement atomic stored procedures (sp_assign_case), deterministic stored functions (fn_case_duration), DEFINER audit triggers, analytical views, and declarative virtual generated columns directly within MySQL.
+
+2.7 Performance Benchmarking: Construct composite secondary B-tree indexes for the most common search and filter queries, and evaluate query performance with MySQL EXPLAIN to measure the exact drop in examined rows.

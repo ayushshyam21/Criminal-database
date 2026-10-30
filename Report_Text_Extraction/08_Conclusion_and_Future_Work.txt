@@ -1,0 +1,26 @@
+================================================================================
+08: CONCLUSION AND FUTURE WORK (CHAPTER 15 & CHAPTER 16)
+================================================================================
+Project: Criminal Case Management & Crime Analytics System (BACSE202)
+Course: Database Systems | VIT Chennai, SCOPE | October 2026
+Team: Ayush Sharma [25BAI1392] & Ojas Sugur [25BAI1222]
+Scope: Chapter 15: Conclusion, Chapter 16: Future Scope (GIS Spatial Indexing, Biometric Vector Search, Predictive Crime Analytics, Blockchain Custody Anchoring)
+--------------------------------------------------------------------------------
+
+
+### Chapter 15: Conclusion
+
+The Criminal Case Management & Crime Analytics System (CCMS) successfully applies relational database theory to practical police record management. What began as an early concept in DA1 by Ojas Sugur and foundational SQL schema work in DA2 by Ayush Sharma has evolved into an integrated, 14-table BCNF database system. By implementing Bell-LaPadula access control, Need-to-Know authorization, trigger-automated custody tracking, dual-account privilege separation, and a decoupled Citizen Portal, our project addresses the security, traceability, and consistency challenges common in traditional station workflows. With 35 automated integration tests and a 24-point smoke test passing cleanly against live MySQL 9.7, the system demonstrates the practical value of anchoring business rules and security policies directly within the database engine.
+
+
+### Chapter 16: Future Scope
+
+Although the current system fulfills all course project requirements, several extensions could further enhance its real-world capabilities:
+
+• Geographic Information System (GIS) Spatial Indexing: Adding MySQL spatial data types (such as POINT with SPATIAL INDEX on R-trees) to enable spatial distance queries, radius-based incident searches, and automated patrol beat boundary mapping.
+
+• Biometric Vector Search: Exploring vector database extensions in MySQL to store high-dimensional embeddings of suspect facial mugshots and fingerprint descriptors for similarity matching.
+
+• Predictive Crime Analytics: Developing statistical and machine learning models on top of historical incident trends to identify high-risk patrol zones and seasonal incident spikes.
+
+• Blockchain Custody Anchoring: Anchoring cryptographic hashes of evidence_custody_log entries into a public or consortium ledger to provide mathematically verifiable proof of evidence custody in court.
