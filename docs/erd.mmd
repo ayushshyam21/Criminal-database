@@ -16,6 +16,7 @@ erDiagram
     PERSONS ||--o{ CASE_PERSONS : "linked to (0..N)"
     EVIDENCE ||--o{ EVIDENCE_CUSTODY_LOG : "tracked by (0..N)"
     IUCR_CODES ||--o{ PUBLIC_CRIME_INCIDENTS : "categorizes (0..N)"
+    CITIZENS ||--o{ CITIZEN_REPORTS : "submits (0..N)"
 
     POLICE_STATIONS {
         int station_id PK
@@ -33,6 +34,7 @@ erDiagram
         varchar email UK
         varchar password_hash
         enum role
+        enum clearance_level
         varchar full_name
         varchar badge_number UK
         boolean is_active
@@ -49,6 +51,7 @@ erDiagram
         enum case_type
         enum status
         enum priority
+        enum classification_level
         varchar incident_location
         datetime date_reported
         datetime date_closed
@@ -170,3 +173,32 @@ erDiagram
         varchar performed_by
         datetime timestamp
     }
+
+    CITIZENS {
+        int citizen_id PK
+        varchar email UK
+        varchar password_hash
+        varchar full_name
+        varchar phone_number
+        varchar address
+        boolean is_active
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    CITIZEN_REPORTS {
+        int report_id PK
+        varchar tracking_number UK
+        int citizen_id FK
+        varchar category
+        date incident_date
+        varchar incident_location
+        varchar title
+        text description
+        enum status
+        text public_status_notes
+        boolean is_demo_submission
+        timestamp created_at
+        timestamp updated_at
+    }
+
