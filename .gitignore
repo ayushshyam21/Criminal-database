@@ -28,3 +28,8 @@ backup_*.sql
 # Operating system files
 .DS_Store
 Thumbs.db
+
+# Microsoft Word temporary lock files
+~$*
+docs/ref_media/
+docs/backups/

@@ -1,35 +1,218 @@
-# CYBER-CRIME & CRIMINAL CASE MANAGEMENT SYSTEM WITH PUBLIC CRIME ANALYTICS (CCMS)
-## Comprehensive Academic Project Evaluation Report
+<div align="center">
 
-**Department of Computer Science & Engineering**  
-**Course:** Database Management Systems (CSE2004)  
-**Academic Term:** 2025–2026  
-**Database Engine:** MySQL Community Server 9.7.1 / 8.0+ (InnoDB Storage Engine)  
-**Application Backend:** Python 3.14 / Flask 3.1.2 / SQLAlchemy 2.0.44 / PyMySQL 1.1.2  
-**Frontend Framework:** Bootstrap 5.3.3 / Chart.js 4.4.1 / Jinja2 / HTML5  
+# BACSE202
+## DATABASE SYSTEMS PROJECT
+### FINAL REPORT
 
 ---
 
-### Project Team Members & Academic Roles
+# CRIMINAL CASE MANAGEMENT & CRIME ANALYTICS SYSTEM
 
-| Team Member | Registration Number | Academic Contribution & Engineering Focus |
-| :--- | :--- | :--- |
-| **Ayush Sharma** | **25BAI1392** | Backend Architecture, Database Implementation, Multi-Level Security (MLS), DA2 SQL Catalog, Testing & Quality Assurance |
-| **Ojas Sugur** | **25BAI1222** | Requirements Engineering, DA1 Conceptual Prototype, Normalization Analysis, Citizen Portal UI & Documentation |
+*Project Explanation Video: [INSERT VIDEO LINK]*
+
+<br/>
+
+![VIT Chennai Logo](vit_logo.png)
+
+<br/>
+
+**VIT CHENNAI**  
+**School of Computer Science and Engineering**  
+**Vellore Institute of Technology, Chennai**  
+**October 2026**
+
+</div>
 
 ---
 
-## EXECUTIVE SUMMARY
+<div align="center">
 
-This report documents the design, theoretical modeling, practical engineering, and empirical evaluation of our **Cyber-Crime & Criminal Case Management System with Crime Analytics (CCMS)**. The project originated as an academic proposal in Digital Assignment 1 (DA1), authored by Ojas Sugur (25BAI1222), which conceptualized a lightweight Java terminal application over JDBC to replace error-prone paper general diaries in municipal police desks. In Digital Assignment 2 (DA2), Ayush Sharma (25BAI1392) implemented the foundational MySQL relational schema, integrity constraints, multi-table joins, views, triggers, and transaction controls on a 6-table schema.
+*A project report on*
 
-Recognizing that real-world law enforcement requires far more than console scripting, our team evolved that foundation into an enterprise-grade, 14-table relational database strictly satisfying Boyce-Codd Normal Form (BCNF), paired with a responsive Python Flask web application. The completed system reconciles three demanding operational requirements:
+# CRIMINAL CASE MANAGEMENT & CRIME ANALYTICS SYSTEM
 
-1. **Granular Internal Police Operations:** Managing criminal case dockets, suspect/victim persona registries, and an immutable chain-of-custody evidence ledger.
-2. **Multi-Level Security (MLS) & Need-to-Know Access:** Implementing the Bell-LaPadula confidentiality model across four hierarchical clearance tiers (`PUBLIC` < `INTERNAL` < `CONFIDENTIAL` < `RESTRICTED`), reinforced by discretionary operational assignment verification.
-3. **Decoupled Public Citizen Engagement:** Providing a dedicated, privacy-defended citizen portal (`/citizen/*`) with salted scrypt authentication, automated tracking code generation (`CR-YYYY-XXXXX`), and anti-enumeration HTTP 404 security defense.
+*Submitted in partial fulfilment of the requirements for the course*  
+**BACSE202 – DATABASE SYSTEMS**
 
-The system is further integrated with a live ETL pipeline for the City of Chicago Socrata Open Data Portal, ingesting over 50,000 public crime incidents mapped to canonical Illinois Uniform Crime Reporting (IUCR) lookup codes. The entire platform has been verified against live MySQL Community Server 9.7, passing all 35 automated Pytest integration tests and a 24-point smoke test suite with a 100% pass rate.
+### Bachelor of Technology in
+### Artificial Intelligence and Machine Learning
+
+*Submitted by:*
+
+**Ayush Sharma [25BAI1392]**  
+**Ojas Sugur [25BAI1222]**
+
+<br/>
+
+![VIT Chennai Logo](vit_logo.png)
+
+<br/>
+
+**SCOPE**  
+**School of Computer Science and Engineering**  
+**Vellore Institute of Technology, Chennai**  
+**October 2026**
+
+</div>
+
+---
+
+## DECLARATION
+
+We hereby declare that the project report entitled **"CRIMINAL CASE MANAGEMENT & CRIME ANALYTICS SYSTEM"** submitted by **Ayush Sharma [25BAI1392]** and **Ojas Sugur [25BAI1222]** for the course of **BACSE202 DATABASE SYSTEMS**, School of Computer Science and Engineering (SCOPE), Vellore Institute of Technology, Chennai, is a record of original work carried out by us under the supervision of **DR. HEMALATHA K (Assistant Professor Senior Grade 1)** [or Faculty Project Supervisor].
+
+We further declare that the work reported in this project has not been submitted, either in part or in full, for the award of any other degree, diploma, or academic credit at this Institute or any other institute or university.
+
+The technical descriptions, database schemas, normalization proofs, SQL scripts, stored routines, test benchmarks, and system screenshots in this report have been prepared with reference to our implemented project repository and its accompanying documentation. Results reported have been verified as authentic system evidence against our live MySQL Community Server 9.7 database instance and automated test suite.
+
+**Place:** VIT CHENNAI  
+**Date:** 30/10/2026  
+
+<div align="right">
+<b>Ayush Sharma [25BAI1392]</b><br/>
+<b>Ojas Sugur [25BAI1222]</b>
+</div>
+
+---
+
+<div align="center">
+<b>SCOPE — School of Computer Science and Engineering</b>
+</div>
+
+## CERTIFICATE
+
+This is to certify that the project report entitled **"CRIMINAL CASE MANAGEMENT & CRIME ANALYTICS SYSTEM"** is prepared and submitted by **Ayush Sharma [25BAI1392]** and **Ojas Sugur [25BAI1222]** to Vellore Institute of Technology, Chennai, in partial fulfillment of the requirements for the award of the course project of **BACSE202 DATABASE SYSTEMS**. The project report has been prepared under my guidance and, subject to review and approval by the appropriate academic authorities, is submitted for evaluation.
+
+The candidates have ensured that all database architecture specifications, Boyce-Codd Normal Form (BCNF) proofs, multi-level security access control models, benchmark counts, and system limitations are accurately represented in this final submitted version.
+
+<br/>
+
+**Signature of Supervisor:** ___________________________  
+**Name:** DR. HEMALATHA K [or Faculty Supervisor Placeholder]  
+**Designation:** Assistant Professor Senior Grade 1  
+**School of Computer Science and Engineering (SCOPE)**  
+**Vellore Institute of Technology, Chennai**  
+**Date:** 30/10/2026  
+
+---
+
+## ABSTRACT
+
+The Criminal Case Management & Crime Analytics System (CCMS) is an enterprise-grade relational database and analytical platform engineered to overcome the critical operational shortcomings of paper-based general diaries and fragmented legacy police dockets. Traditional precinct workflows suffer from data duplication, misplaced case files, unverified custody tracking, and dangerous over-privileged database accounts. To resolve these challenges, our team developed a mathematically normalized 14-table relational database strictly satisfying Boyce-Codd Normal Form (BCNF) on MySQL Community Server 9.7 (InnoDB Storage Engine), paired with a responsive Python 3.14 Flask web application and interactive Chart.js dashboards.
+
+The application provides end-to-end criminal dossier lifecycle tracking, person registries for suspects, victims, and witnesses, and an evidence catalog with automated, trigger-enforced chain-of-custody logging. To bridge public safety and community transparency safely, the architecture introduces a decoupled Citizen Portal where victims can file non-emergency reports, receive automated tracking references (`CR-YYYY-XXXXX`), and monitor status updates without exposing confidential investigative intelligence. An anti-enumeration defense returning HTTP 404 Not Found prevents unauthorized tracking ID probing. The platform also ingests over 50,000 public crime records from the City of Chicago Socrata Open Data Portal, reconciling incidents with canonical Illinois Uniform Crime Reporting (IUCR) lookup codes.
+
+Operational security is enforced through a dual-account least-privilege model isolating migration authority (`crimedb_admin`) from web runtime operations (`crimedb_app`), combined with Bell-LaPadula Multi-Level Security across four hierarchical tiers (`PUBLIC` < `INTERNAL` < `CONFIDENTIAL` < `RESTRICTED`) and discretionary Need-to-Know assignment checks. The system has been validated through 35 automated Pytest integration tests and a 24-point end-to-end smoke test, achieving 100% pass rates. Secondary composite B-tree indexing reduced examined query rows by over 95% on EXPLAIN benchmarks. Current operational boundaries are focused on academic demonstration, with future scope targeting GIS spatial indexing, biometric vector search, and blockchain-anchored custody ledgers.
+
+**Keywords:** Criminal case management, relational database, MySQL 9.7, Boyce-Codd Normal Form, Bell-LaPadula security, chain of custody, citizen portal, crime analytics, Flask, least privilege.
+
+---
+
+## ACKNOWLEDGEMENT
+
+We express our sincere gratitude to **DR. HEMALATHA K (Assistant Professor Senior Grade 1)**, School of Computer Science and Engineering (SCOPE), Vellore Institute of Technology, Chennai, for guidance, constructive feedback, and academic encouragement during the conceptualization, implementation, and documentation of this project report.
+
+We thank the faculty members and project coordinators of VIT Chennai and SCOPE for providing an academic environment in which modern relational database management, multi-level security, and web software engineering can be explored and synthesized. We are also grateful to the developers and maintainers of the open-source technologies utilized in this system, including Python, Flask, SQLAlchemy, MySQL, Bootstrap, and Chart.js, as well as the City of Chicago Department of Innovation and Technology for providing the public Socrata Open Data Portal API.
+
+We would also like to thank each other as project teammates for seamless collaboration throughout the design, testing, and debugging phases. Finally, we acknowledge that an enterprise law enforcement record system can only be evaluated responsibly when its operational boundaries and academic demonstration constraints are stated clearly; this report therefore carefully distinguishes verified local implementation results from future production extensions.
+
+---
+
+## TABLE OF CONTENTS
+
+| Title / Section | Page |
+| :--- | :---: |
+| **ABSTRACT** | iii |
+| **ACKNOWLEDGEMENT** | iv |
+| **LIST OF TABLES** | vi |
+| **LIST OF FIGURES** | vii |
+| **LIST OF ABBREVIATIONS AND NOMENCLATURE** | viii |
+| **CHAPTER 1: PROBLEM STATEMENT** | 1 |
+| &nbsp;&nbsp;&nbsp;&nbsp;1.1 Operational Deficiencies of Manual Registers | 1 |
+| &nbsp;&nbsp;&nbsp;&nbsp;1.2 Relational Anomalies & Data Corruption | 2 |
+| &nbsp;&nbsp;&nbsp;&nbsp;1.3 Privilege Over-Granting & Security Risks | 2 |
+| **CHAPTER 2: PROJECT OBJECTIVES & SCOPE** | 3 |
+| &nbsp;&nbsp;&nbsp;&nbsp;2.1 Mathematical Normalization (BCNF) | 3 |
+| &nbsp;&nbsp;&nbsp;&nbsp;2.2 Multi-Level Security & Need-to-Know | 3 |
+| &nbsp;&nbsp;&nbsp;&nbsp;2.3 Dual-Account Least Privilege Protection | 4 |
+| &nbsp;&nbsp;&nbsp;&nbsp;2.4 Decoupled Citizen Portal | 4 |
+| **CHAPTER 3: LITERATURE SURVEY & EXISTING SYSTEMS** | 5 |
+| &nbsp;&nbsp;&nbsp;&nbsp;3.1 Prior Research in Digital Policing Systems | 5 |
+| &nbsp;&nbsp;&nbsp;&nbsp;3.2 Theoretical Database & Security Foundations | 6 |
+| **CHAPTER 4: SYSTEM REQUIREMENTS & USER ROLES** | 7 |
+| &nbsp;&nbsp;&nbsp;&nbsp;4.1 User Roles & Clearance Hierarchy | 7 |
+| &nbsp;&nbsp;&nbsp;&nbsp;4.2 Functional Requirements (FR-1 to FR-12) | 8 |
+| &nbsp;&nbsp;&nbsp;&nbsp;4.3 Non-Functional Requirements (NFR-1 to NFR-5) | 9 |
+| **CHAPTER 5: SYSTEM DESIGN & ARCHITECTURE** | 10 |
+| &nbsp;&nbsp;&nbsp;&nbsp;5.1 Layered Presentation, Logic & Storage Architecture | 10 |
+| &nbsp;&nbsp;&nbsp;&nbsp;5.2 Dual-Account Least-Privilege Architecture | 11 |
+| &nbsp;&nbsp;&nbsp;&nbsp;5.3 Bell-LaPadula Confidentiality Model | 12 |
+| **CHAPTER 6: DATABASE DESIGN, ER & EER MODELING** | 14 |
+| &nbsp;&nbsp;&nbsp;&nbsp;6.1 Enhanced Entity-Relationship (EER) Specialization | 14 |
+| &nbsp;&nbsp;&nbsp;&nbsp;6.2 Complete 14-Table Relational ER Diagram | 15 |
+| **CHAPTER 7: RELATIONAL SCHEMA & DATA DICTIONARY** | 17 |
+| **CHAPTER 8: FUNCTIONAL DEPENDENCIES & BCNF PROOFS** | 22 |
+| **CHAPTER 9: SQL IMPLEMENTATION & QUERY CATALOG** | 25 |
+| **CHAPTER 10: ADVANCED DATABASE FEATURES** | 29 |
+| **CHAPTER 11: CLOUD DEPLOYMENT ARCHITECTURE** | 34 |
+| **CHAPTER 12: TESTING & QUALITY ASSURANCE** | 36 |
+| **CHAPTER 13: PERFORMANCE ANALYSIS & INDEX OPTIMIZATION** | 39 |
+| **CHAPTER 14: RESULTS & DISCUSSION** | 41 |
+| **CHAPTER 15: CONCLUSION** | 43 |
+| **CHAPTER 16: FUTURE SCOPE** | 44 |
+| **CHAPTER 17: REFERENCES** | 45 |
+
+---
+
+## LIST OF TABLES
+
+| Table Caption | Page |
+| :--- | :---: |
+| **Table 3.1.** Comparison of prior policing systems and current CCMS architecture | 5 |
+| **Table 4.1.** User roles, clearance tiers, demo credentials, and responsibilities | 7 |
+| **Table 5.1.** Database account privilege segregation and operational prohibitions | 11 |
+| **Table 7.1.** Comprehensive Data Dictionary across all 14 BCNF tables | 18 |
+| **Table 12.1.** Automated test suite execution matrix (35/35 passing) | 36 |
+| **Table 13.1.** Composite B-tree secondary index formulation and target query paths | 39 |
+| **Table 13.2.** EXPLAIN benchmark comparison before and after composite indexing | 40 |
+
+---
+
+## LIST OF FIGURES
+
+| Figure Caption | Page |
+| :--- | :---: |
+| **Figure 5.1.** Multi-tier application and database architecture | 10 |
+| **Figure 6.1.** Enhanced Entity-Relationship (EER) model showing personnel specialization | 14 |
+| **Figure 6.2.** Complete 14-table Relational Entity-Relationship Diagram (ERD) | 16 |
+| **Figure 11.1.** Cloud production deployment topology with VPC and managed RDS | 35 |
+
+---
+
+## LIST OF ABBREVIATIONS AND NOMENCLATURE
+
+| Abbreviation / Term | Meaning / Expansion |
+| :--- | :--- |
+| **API** | Application Programming Interface |
+| **ACID** | Atomicity, Consistency, Isolation, and Durability |
+| **BCNF** | Boyce-Codd Normal Form |
+| **CCMS** | Cyber-Crime & Criminal Case Management System |
+| **CK** | Candidate Key |
+| **CRUD** | Create, Read, Update, Delete |
+| **DBMS** | Database Management System |
+| **DDL** | Data Definition Language |
+| **DML** | Data Manipulation Language |
+| **EER** | Enhanced Entity-Relationship |
+| **ERD** | Entity-Relationship Diagram |
+| **ETL** | Extract, Transform, Load |
+| **FIR** | First Information Report |
+| **FK** | Foreign Key |
+| **IUCR** | Illinois Uniform Crime Reporting |
+| **JSON** | JavaScript Object Notation |
+| **MLS** | Multi-Level Security |
+| **NFR** | Non-Functional Requirement |
+| **PK** | Primary Key |
+| **RBAC** | Role-Based Access Control |
 
 ---
 
